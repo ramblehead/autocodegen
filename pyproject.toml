@@ -1,0 +1,61 @@
+[project]
+name = "autocodegen"
+version = "0.1.0"
+description = "Library and utilities for auto-code generators"
+authors = [
+  {name = "ramblehead", email = "<v.rybynok@gmail.com>"},
+]
+readme = "README.md"
+requires-python = "==3.14.*"
+
+dependencies = [
+  # "mako~=1.2.4",
+]
+
+[project.scripts]
+acg = "autocodegen.main:main"
+
+[dependency-groups]
+dev = [
+  "black~=25.9.0",
+  "basedpyright~=1.31.6",
+  "ruff~=0.14.0",
+  "ruff-lsp~=0.0.62",
+]
+
+[tool.ruff]
+lint.select = ["ALL"]
+
+lint.ignore = [
+  # No need
+  "DJ",    # flake8-django
+  "UP009", # UTF-8 encoding declaration is unnecessary
+  # subprocess call with shell=True seems safe, but
+  # may be changed in the future; consider rewriting without shell
+  "S602",
+  "S607", # Starting a process with a partial executable path
+
+  # Should be enabled later when project is more mature
+  "D", # pydocstyle
+
+  # Should be enabled for releases
+  "ERA001", # eradicate (e.g. comments)
+  "T20",    # flake8-print
+
+  # rh-template dirs should implicit namespace packages
+  # "INP001", # implicit-namespace-package
+]
+
+line-length = 110
+
+extend-exclude = [
+  "**/__pycache__",
+  "**/.*",
+]
+
+[tool.black]
+line-length = 79
+
+[build-system]
+requires = ["uv_build>=0.9.10,<0.10.0"]
+build-backend = "uv_build"

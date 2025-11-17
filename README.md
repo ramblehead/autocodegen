@@ -1,2 +1,3 @@
 # autocodegen
-Library and framework for auto-code generators
+
+Library and utilities for auto-code generators
