@@ -2,9 +2,7 @@
 name = "autocodegen"
 version = "0.0.1"
 description = "Library and utilities for auto-code generators"
-authors = [
-  {name = "ramblehead", email = "<v.rybynok@gmail.com>"},
-]
+authors = [{ name = "ramblehead", email = "<v.rybynok@gmail.com>" }]
 readme = "README.md"
 requires-python = "==3.14.*"
 
@@ -48,10 +46,7 @@ lint.ignore = [
 
 line-length = 110
 
-extend-exclude = [
-  "**/__pycache__",
-  "**/.*",
-]
+extend-exclude = ["**/__pycache__", "**/.*"]
 
 [tool.black]
 line-length = 79
