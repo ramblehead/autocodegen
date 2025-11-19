@@ -3,4 +3,4 @@
 from .config import Config
 from .expand import expand, expand_and_implode
 
-__all__ = ["expand", "expand_and_implode", "Config"]
+__all__ = ["Config", "expand", "expand_and_implode"]

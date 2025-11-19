@@ -6,7 +6,6 @@ import platform
 import shutil
 import subprocess
 from pathlib import Path
-from types import ModuleType
 from typing import TYPE_CHECKING, Any, Self, TypedDict, cast
 
 from mako.lookup import TemplateLookup  # type: ignore reportMissingStubs
@@ -16,6 +15,7 @@ from .config import Config, config_default
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+    from types import ModuleType
 
 template_ext = ".mako"
 rename_ext = ".rename"
@@ -118,8 +118,7 @@ def expand_all_project_templates(
 
     for in_template_file in in_template_files:
         out_file_path_str = str(in_template_file)
-        if out_file_path_str.endswith(template_ext):
-            out_file_path_str = out_file_path_str[: -len(template_ext)]
+        out_file_path_str = out_file_path_str.removesuffix(template_ext)
 
         out_file_path = Path(out_file_path_str)
 
@@ -215,12 +214,14 @@ def expand(
     implode_script_path_str: str,
     config: dict[str, Any] | None = None,
 ) -> None:
-    config_user = cast(Config | None, config)
+    config_user = cast("Config | None", config)
     ctx = create_project_context(
         path=Path(implode_script_path_str).parent,
-        config=config_default
-        if config_user is None
-        else {**config_default, **config_user},
+        config=(
+            config_default
+            if config_user is None
+            else {**config_default, **config_user}
+        ),
     )
 
     process_expand(delete_origins=True, ctx=ctx)
@@ -230,10 +231,14 @@ def expand_and_implode(
     implode_script_path_str: str,
     config: dict[str, Any] | None = None,
 ) -> None:
-    config_user = cast(Config | None, config)
+    config_user = cast("Config | None", config)
     ctx = create_project_context(
         path=Path(implode_script_path_str).parent,
-        config=config_default if config_user is None else config_default | config_user,
+        config=(
+            config_default
+            if config_user is None
+            else config_default | config_user
+        ),
     )
 
     process_expand(delete_origins=True, ctx=ctx)
