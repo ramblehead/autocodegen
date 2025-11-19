@@ -228,12 +228,13 @@ def expand(
 
 
 def expand_and_implode(
-    implode_script_path_str: str,
+    acg_path: str | Path,
     config: dict[str, Any] | None = None,
 ) -> None:
+    acg_path = Path(acg_path)
     config_user = cast("Config | None", config)
     ctx = create_project_context(
-        path=Path(implode_script_path_str).parent,
+        path=Path(acg_path).parent,
         config=(
             config_default
             if config_user is None
