@@ -227,51 +227,78 @@ def expand(
     process_expand(delete_origins=True, ctx=ctx)
 
 
+# def expand_and_implode(
+#     acg_path: str | Path,
+#     config: dict[str, Any] | None = None,
+# ) -> None:
+#     acg_path = Path(acg_path)
+#     config_user = cast("Config | None", config)
+#     ctx = create_project_context(
+#         path=Path(acg_path).parent,
+#         config=(
+#             config_default
+#             if config_user is None
+#             else config_default | config_user
+#         ),
+#     )
+
+#     process_expand(delete_origins=True, ctx=ctx)
+
+#     boom = "💥" if (platform.system() != "Windows") else "*Boom!*"
+#     print(f"\nImploding... {boom}")
+
+#     # Wipe python cache directories
+#     pyc_paths = get_paths_by_ext(ctx["path"], "__pycache__", with_dirs=True)
+#     pyc_path_strs = [str(p) for p in pyc_paths]
+
+#     subprocess.Popen(
+#         'python -c "'
+#         "import shutil;"
+#         f'[shutil.rmtree(pyc, ignore_errors=True) for pyc in {pyc_path_strs}];"',
+#         shell=True,
+#     )
+
+#     if platform.system() == "Windows":
+#         os.chdir(ctx["path"])
+#         sd_path = Path(__file__).parent
+#         os.startfile(  # noqa: S606 # type: ignore[reportGeneralTypeIssues]
+#             str(sd_path / "ms-implode.bat"),
+#         )
+#     else:
+#         rh_template_dir_path = ctx["path"] / "rh_template"
+#         subprocess.Popen(
+#             'python -c "'
+#             "import shutil;"
+#             f"shutil.rmtree('{rh_template_dir_path}', ignore_errors=True);"
+#             f"shutil.os.remove('{implode_script_path_str}');\"",
+#             shell=True,
+#         )
+
+#     input("\nPress Enter to exit...")
+
+
 def expand_and_implode(
-    acg_path: str | Path,
+    project_root: str | Path,
+    acg_template_path: str | Path,
     config: dict[str, Any] | None = None,
 ) -> None:
-    acg_path = Path(acg_path)
-    config_user = cast("Config | None", config)
-    ctx = create_project_context(
-        path=Path(acg_path).parent,
-        config=(
-            config_default
-            if config_user is None
-            else config_default | config_user
-        ),
-    )
+    project_root = Path(project_root)
+    acg_template_path = Path(acg_template_path)
 
-    process_expand(delete_origins=True, ctx=ctx)
+    bootstrap_path = acg_template_path / "bootstrap"
 
-    boom = "💥" if (platform.system() != "Windows") else "*Boom!*"
-    print(f"\nImploding... {boom}")
+    def _ignore_top_level_acg(path: str, names: list[str]) -> set[str]:
+        current_dir = Path(path)
+        if current_dir == bootstrap_path:
+            print(f"Ignoring {bootstrap_path / "acg"!s}")
+            return {"acg"} & set(names)
+        return set()
 
-    # Wipe python cache directories
-    pyc_paths = get_paths_by_ext(ctx["path"], "__pycache__", with_dirs=True)
-    pyc_path_strs = [str(p) for p in pyc_paths]
-
-    subprocess.Popen(
-        'python -c "'
-        "import shutil;"
-        f'[shutil.rmtree(pyc, ignore_errors=True) for pyc in {pyc_path_strs}];"',
-        shell=True,
-    )
-
-    if platform.system() == "Windows":
-        os.chdir(ctx["path"])
-        sd_path = Path(__file__).parent
-        os.startfile(  # noqa: S606 # type: ignore[reportGeneralTypeIssues]
-            str(sd_path / "ms-implode.bat"),
+    if bootstrap_path.exists():
+        shutil.copytree(
+            bootstrap_path,
+            project_root,
+            dirs_exist_ok=True,
+            ignore=_ignore_top_level_acg,
         )
-    else:
-        rh_template_dir_path = ctx["path"] / "rh_template"
-        subprocess.Popen(
-            'python -c "'
-            "import shutil;"
-            f"shutil.rmtree('{rh_template_dir_path}', ignore_errors=True);"
-            f"shutil.os.remove('{implode_script_path_str}');\"",
-            shell=True,
-        )
-
-    input("\nPress Enter to exit...")
+        print("xxx", str(bootstrap_path))
