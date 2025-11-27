@@ -107,8 +107,10 @@ def get_paths_by_ext(
         result += [
             Path(root) / file_name
             for file_name in file_names
-            if file_name.endswith(ext)
-            and Path(file_name).is_relative_to(exclude_path)
+            if (
+                file_name.endswith(ext)
+                and not Path(file_name).is_relative_to(exclude_path)
+            )
         ]
 
     return result
