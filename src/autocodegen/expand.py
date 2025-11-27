@@ -174,6 +174,7 @@ def process_renames(*, delete_origins: bool, ctx: ProjectContext) -> None:
         ctx["project_root"],
         RENAME_EXT,
         with_dirs=True,
+        exclude_path=ctx["project_root"] / ACG_DIR_NAME,
     )
 
     if delete_origins:
