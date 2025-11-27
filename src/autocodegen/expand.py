@@ -17,12 +17,13 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from types import ModuleType
 
-template_ext = ".mako"
-rename_ext = ".rename"
+TEMPLATE_EXT = ".mako"
+RENAME_EXT = ".rename"
+ACG_DIR_NAME = "acg"
 
 
 class ProjectContext(TypedDict):
-    path: Path
+    project_root: Path
     config: Config
 
 
@@ -33,10 +34,14 @@ def config_ensure_valid(config: Config, project_path: Path) -> Config:
     return config
 
 
-def create_project_context(*, path: Path, config: Config) -> ProjectContext:
+def create_project_context(
+    *,
+    project_root: Path,
+    config: Config,
+) -> ProjectContext:
     return {
-        "path": path,
-        "config": config_ensure_valid(config, path),
+        "project_root": project_root,
+        "config": config_ensure_valid(config, project_root),
     }
 
 
@@ -85,10 +90,16 @@ def expand_template(
         print(f"Error writing to file: {cause}")
 
 
-def get_paths_by_ext(path: Path, ext: str, *, with_dirs: bool) -> list[Path]:
+def get_paths_by_ext(
+    root_path: Path,
+    ext: str,
+    *,
+    with_dirs: bool,
+    exclude_path: Path,
+) -> list[Path]:
     result: list[Path] = []
 
-    for root, dir_names, file_names in os.walk(path):
+    for root, dir_names, file_names in os.walk(root_path):
         names = file_names
         if with_dirs:
             names += dir_names
@@ -97,6 +108,7 @@ def get_paths_by_ext(path: Path, ext: str, *, with_dirs: bool) -> list[Path]:
             Path(root) / file_name
             for file_name in file_names
             if file_name.endswith(ext)
+            and Path(file_name).is_relative_to(exclude_path)
         ]
 
     return result
@@ -108,9 +120,10 @@ def expand_all_project_templates(
     ctx: ProjectContext,
 ) -> None:
     in_template_files = get_paths_by_ext(
-        ctx["path"],
-        template_ext,
+        ctx["project_root"],
+        TEMPLATE_EXT,
         with_dirs=False,
+        exclude_path=ctx["project_root"] / ACG_DIR_NAME,
     )
 
     if in_template_files:
@@ -118,7 +131,7 @@ def expand_all_project_templates(
 
     for in_template_file in in_template_files:
         out_file_path_str = str(in_template_file)
-        out_file_path_str = out_file_path_str.removesuffix(template_ext)
+        out_file_path_str = out_file_path_str.removesuffix(TEMPLATE_EXT)
 
         out_file_path = Path(out_file_path_str)
 
@@ -137,7 +150,7 @@ def get_rename_destination_path(
     delete_origins: bool,
     ctx: ProjectContext,
 ) -> str:
-    holder_path_str = orig_path_str[: -len(rename_ext)]
+    holder_path_str = orig_path_str[: -len(RENAME_EXT)]
 
     renamer_path = Path(f"{holder_path_str}.rename.py")
     if renamer_path.is_file():
@@ -158,8 +171,8 @@ def get_rename_destination_path(
 
 def process_renames(*, delete_origins: bool, ctx: ProjectContext) -> None:
     orig_paths = get_paths_by_ext(
-        ctx["path"],
-        rename_ext,
+        ctx["project_root"],
+        RENAME_EXT,
         with_dirs=True,
     )
 
@@ -217,7 +230,7 @@ def expand(
     config_user = cast("Config | None", config)
 
     ctx = create_project_context(
-        path=project_root,
+        project_root=project_root,
         config=(
             config_default
             if config_user is None
