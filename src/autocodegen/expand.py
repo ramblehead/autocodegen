@@ -211,12 +211,13 @@ def process_expand(*, delete_origins: bool, ctx: ProjectContext) -> None:
 
 
 def expand(
-    implode_script_path_str: str,
+    project_root: Path,
     config: dict[str, Any] | None = None,
 ) -> None:
     config_user = cast("Config | None", config)
+
     ctx = create_project_context(
-        path=Path(implode_script_path_str).parent,
+        path=project_root,
         config=(
             config_default
             if config_user is None
@@ -225,6 +226,36 @@ def expand(
     )
 
     process_expand(delete_origins=True, ctx=ctx)
+
+
+def generate(
+    project_root: str | Path,
+    acg_template_path: str | Path,
+    config: dict[str, Any] | None = None,
+) -> None:
+    project_root = Path(project_root)
+    acg_template_path = Path(acg_template_path)
+
+    bootstrap_path = acg_template_path / "bootstrap"
+
+    def _ignore_top_level_acg(path: str, names: list[str]) -> set[str]:
+        current_dir = Path(path)
+        if current_dir == bootstrap_path:
+            print(f"Ignoring {bootstrap_path / "acg"!s}")
+            return {"acg"} & set(names)
+        return set()
+
+    if bootstrap_path.exists():
+        shutil.copytree(
+            bootstrap_path,
+            project_root,
+            dirs_exist_ok=True,
+            ignore=_ignore_top_level_acg,
+        )
+
+        expand(project_root, config)
+
+        print("xxx", str(bootstrap_path))
 
 
 # def expand_and_implode(
@@ -275,30 +306,3 @@ def expand(
 #         )
 
 #     input("\nPress Enter to exit...")
-
-
-def expand_and_implode(
-    project_root: str | Path,
-    acg_template_path: str | Path,
-    config: dict[str, Any] | None = None,
-) -> None:
-    project_root = Path(project_root)
-    acg_template_path = Path(acg_template_path)
-
-    bootstrap_path = acg_template_path / "bootstrap"
-
-    def _ignore_top_level_acg(path: str, names: list[str]) -> set[str]:
-        current_dir = Path(path)
-        if current_dir == bootstrap_path:
-            print(f"Ignoring {bootstrap_path / "acg"!s}")
-            return {"acg"} & set(names)
-        return set()
-
-    if bootstrap_path.exists():
-        shutil.copytree(
-            bootstrap_path,
-            project_root,
-            dirs_exist_ok=True,
-            ignore=_ignore_top_level_acg,
-        )
-        print("xxx", str(bootstrap_path))
