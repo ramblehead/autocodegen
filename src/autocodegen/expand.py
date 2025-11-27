@@ -19,11 +19,11 @@ if TYPE_CHECKING:
 
 TEMPLATE_EXT = ".mako"
 RENAME_EXT = ".rename"
-ACG_DIR_NAME = "acg"
 
 
 class ProjectContext(TypedDict):
     project_root: Path
+    acg_template_path: Path
     config: Config
 
 
@@ -37,10 +37,12 @@ def config_ensure_valid(config: Config, project_path: Path) -> Config:
 def create_project_context(
     *,
     project_root: Path,
+    acg_template_path: Path,
     config: Config,
 ) -> ProjectContext:
     return {
         "project_root": project_root,
+        "acg_template_path": acg_template_path,
         "config": config_ensure_valid(config, project_root),
     }
 
@@ -125,7 +127,7 @@ def expand_all_project_templates(
         ctx["project_root"],
         TEMPLATE_EXT,
         with_dirs=False,
-        exclude_path=ctx["project_root"] / ACG_DIR_NAME,
+        exclude_path=ctx["acg_template_path"],
     )
 
     if in_template_files:
@@ -176,7 +178,7 @@ def process_renames(*, delete_origins: bool, ctx: ProjectContext) -> None:
         ctx["project_root"],
         RENAME_EXT,
         with_dirs=True,
-        exclude_path=ctx["project_root"] / ACG_DIR_NAME,
+        exclude_path=ctx["acg_template_path"],
     )
 
     if delete_origins:
@@ -228,12 +230,14 @@ def process_expand(*, delete_origins: bool, ctx: ProjectContext) -> None:
 
 def expand(
     project_root: Path,
+    acg_template_path: Path,
     config: dict[str, Any] | None = None,
 ) -> None:
     config_user = cast("Config | None", config)
 
     ctx = create_project_context(
         project_root=project_root,
+        acg_template_path=acg_template_path,
         config=(
             config_default
             if config_user is None
@@ -269,7 +273,7 @@ def generate(
             ignore=_ignore_top_level_acg,
         )
 
-        expand(project_root, config)
+        expand(project_root, acg_template_path, config)
 
         print("xxx", str(bootstrap_path))
 
