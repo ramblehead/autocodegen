@@ -97,7 +97,7 @@ def get_paths_by_ext(
             for file_name in file_names
             if (
                 file_name.endswith(ext)
-                and not Path(file_name).is_relative_to(acg_root)
+                and not (Path(root) / file_name).is_relative_to(acg_root)
             )
         ]
 
@@ -113,7 +113,7 @@ def expand_all_project_templates(
         project_root=ctx.project_root,
         ext=TEMPLATE_EXT,
         with_dirs=False,
-        acg_root=ctx.acg_template_path,
+        acg_root=ctx.acg_root,
     )
 
     if in_template_files:
