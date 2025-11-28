@@ -2,11 +2,9 @@
 
 import importlib.util
 import os
-import platform
 import shutil
-import subprocess
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Self, TypedDict, cast
+from typing import TYPE_CHECKING, NamedTuple, Self
 
 from mako.lookup import TemplateLookup  # type: ignore reportMissingStubs
 
@@ -21,30 +19,18 @@ TEMPLATE_EXT = ".mako"
 RENAME_EXT = ".rename"
 
 
-class ProjectContext(TypedDict):
+class ProjectContext(NamedTuple):
     project_root: Path
+    acg_root: Path
     acg_template_path: Path
     config: Config
 
 
-def config_ensure_valid(config: Config, project_path: Path) -> Config:
+def config_ensure_valid(config: Config, project_root: Path) -> Config:
     if "project_name" not in config or config["project_name"] is None:
-        config["project_name"] = project_path.name
+        config["project_name"] = project_root.name
 
     return config
-
-
-def create_project_context(
-    *,
-    project_root: Path,
-    acg_template_path: Path,
-    config: Config,
-) -> ProjectContext:
-    return {
-        "project_root": project_root,
-        "acg_template_path": acg_template_path,
-        "config": config_ensure_valid(config, project_root),
-    }
 
 
 class ImportFromFileError(ModuleNotFoundError):
@@ -81,7 +67,7 @@ def expand_template(
     )
 
     file_out_str: str = template.render(  # type: ignore unknownMemberType
-        config=ctx["config"],
+        config=ctx.config,
         utils=utils,
     )
 
@@ -93,15 +79,15 @@ def expand_template(
 
 
 def get_paths_by_ext(
-    root_path: Path,
-    ext: str,
     *,
+    project_root: Path,
+    ext: str,
     with_dirs: bool,
-    exclude_path: Path,
+    acg_root: Path,
 ) -> list[Path]:
     result: list[Path] = []
 
-    for root, dir_names, file_names in os.walk(root_path):
+    for root, dir_names, file_names in os.walk(project_root):
         names = file_names
         if with_dirs:
             names += dir_names
@@ -111,7 +97,7 @@ def get_paths_by_ext(
             for file_name in file_names
             if (
                 file_name.endswith(ext)
-                and not Path(file_name).is_relative_to(exclude_path)
+                and not Path(file_name).is_relative_to(acg_root)
             )
         ]
 
@@ -119,15 +105,15 @@ def get_paths_by_ext(
 
 
 def expand_all_project_templates(
+    ctx: ProjectContext,
     *,
     delete_templates: bool,
-    ctx: ProjectContext,
 ) -> None:
     in_template_files = get_paths_by_ext(
-        ctx["project_root"],
-        TEMPLATE_EXT,
+        project_root=ctx.project_root,
+        ext=TEMPLATE_EXT,
         with_dirs=False,
-        exclude_path=ctx["acg_template_path"],
+        acg_root=ctx.acg_template_path,
     )
 
     if in_template_files:
@@ -149,10 +135,10 @@ def expand_all_project_templates(
 
 
 def get_rename_destination_path(
+    ctx: ProjectContext,
     orig_path_str: str,
     *,
     delete_origins: bool,
-    ctx: ProjectContext,
 ) -> str:
     holder_path_str = orig_path_str[: -len(RENAME_EXT)]
 
@@ -162,7 +148,7 @@ def get_rename_destination_path(
 
         # if hasattr(reanamer_mod, "rename"):
         reaname: Callable[[Config, ModuleType], str] = reanamer_mod.rename
-        renamed_path = renamer_path.parent / reaname(ctx["config"], utils)
+        renamed_path = renamer_path.parent / reaname(ctx.config, utils)
 
         if delete_origins:
             del reanamer_mod, reaname
@@ -173,12 +159,12 @@ def get_rename_destination_path(
     return holder_path_str
 
 
-def process_renames(*, delete_origins: bool, ctx: ProjectContext) -> None:
+def process_renames(ctx: ProjectContext, *, delete_origins: bool) -> None:
     orig_paths = get_paths_by_ext(
-        ctx["project_root"],
-        RENAME_EXT,
+        project_root=ctx.project_root,
+        ext=RENAME_EXT,
         with_dirs=True,
-        exclude_path=ctx["acg_template_path"],
+        acg_root=ctx.acg_template_path,
     )
 
     if delete_origins:
@@ -189,9 +175,9 @@ def process_renames(*, delete_origins: bool, ctx: ProjectContext) -> None:
             orig_path_str = str(orig_path)
 
             dest_path_str = get_rename_destination_path(
+                ctx,
                 orig_path_str,
                 delete_origins=delete_origins,
-                ctx=ctx,
             )
 
             if not orig_path.is_dir():
@@ -210,9 +196,9 @@ def process_renames(*, delete_origins: bool, ctx: ProjectContext) -> None:
             orig_path_str = str(orig_path)
 
             dest_path_str = get_rename_destination_path(
+                ctx,
                 orig_path_str,
                 delete_origins=delete_origins,
-                ctx=ctx,
             )
 
             if orig_path.is_dir():
@@ -223,46 +209,32 @@ def process_renames(*, delete_origins: bool, ctx: ProjectContext) -> None:
                 shutil.copy2(orig_path, dest_path_str)
 
 
-def process_expand(*, delete_origins: bool, ctx: ProjectContext) -> None:
-    expand_all_project_templates(delete_templates=delete_origins, ctx=ctx)
-    process_renames(delete_origins=delete_origins, ctx=ctx)
-
-
-def expand(
-    project_root: Path,
-    acg_template_path: Path,
-    config: dict[str, Any] | None = None,
-) -> None:
-    config_user = cast("Config | None", config)
-
-    ctx = create_project_context(
-        project_root=project_root,
-        acg_template_path=acg_template_path,
-        config=(
-            config_default
-            if config_user is None
-            else {**config_default, **config_user}
-        ),
-    )
-
-    process_expand(delete_origins=True, ctx=ctx)
-
-
 def generate(
     project_root: str | Path,
-    acg_template_path: str | Path,
-    config: dict[str, Any] | None = None,
+    acg_root: str | Path,
+    acg_template_name: str,
+    config: Config | None = None,
 ) -> None:
     project_root = Path(project_root)
-    acg_template_path = Path(acg_template_path)
-
+    acg_root = Path(acg_root)
+    acg_template_path = acg_root / acg_template_name
     bootstrap_path = acg_template_path / "bootstrap"
+    config = config_default if config is None else {**config_default, **config}
+
+    ctx = ProjectContext(
+        project_root,
+        acg_root,
+        acg_template_path,
+        config_ensure_valid(config, project_root),
+    )
+
+    acg_template_name = config["acg_template_name"]
 
     def _ignore_top_level_acg(path: str, names: list[str]) -> set[str]:
         current_dir = Path(path)
         if current_dir == bootstrap_path:
-            print(f"Ignoring {bootstrap_path / "acg"!s}")
-            return {"acg"} & set(names)
+            print(f"Ignoring {bootstrap_path / acg_template_name!s}")
+            return {acg_template_name} & set(names)
         return set()
 
     if bootstrap_path.exists():
@@ -273,7 +245,8 @@ def generate(
             ignore=_ignore_top_level_acg,
         )
 
-        expand(project_root, acg_template_path, config)
+        expand_all_project_templates(ctx, delete_templates=True)
+        process_renames(ctx, delete_origins=True)
 
         print("xxx", str(bootstrap_path))
 

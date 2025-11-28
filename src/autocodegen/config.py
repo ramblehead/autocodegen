@@ -6,8 +6,10 @@ from typing import TypedDict
 class Config(TypedDict):
     # When None use project directory name as project_name
     project_name: str | None
+    acg_template_name: str
 
 
 config_default: Config = {
     "project_name": None,
+    "acg_template_name": "acg",
 }
