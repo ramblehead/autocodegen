@@ -232,14 +232,13 @@ def generate(
 
     acg_template_name = config["acg_template_name"]
 
-    def _ignore_acg_root(path: str, names: list[str]) -> set[str]:
-        parent_path = Path(path)
+    def _ignore_acg_root(_path: str, names: list[str]) -> set[str]:
         result: set[str] = set()
 
         for name in names:
-            current_path = parent_path / name
-            if current_path.is_relative_to(acg_root):
-                print(f"Ignoring {current_path!s}")
+            target_path = (project_root / name).resolve(strict=True)
+            if target_path == acg_root.resolve(strict=True):
+                print(f"Preventing acg root override {target_path!s}")
                 result.add(name)
 
         return result
