@@ -18,6 +18,8 @@ if TYPE_CHECKING:
 TEMPLATE_EXT = ".mako"
 RENAME_EXT = ".rename"
 
+ACG_NAME_DEFAULT = "acg"
+
 
 class ProjectContext(NamedTuple):
     project_root: Path
@@ -230,19 +232,24 @@ def generate(
 
     acg_template_name = config["acg_template_name"]
 
-    def _ignore_top_level_acg(path: str, names: list[str]) -> set[str]:
-        current_dir = Path(path)
-        if current_dir == bootstrap_path:
-            print(f"Ignoring {bootstrap_path / acg_template_name!s}")
-            return {acg_template_name} & set(names)
-        return set()
+    def _ignore_acg_root(path: str, names: list[str]) -> set[str]:
+        parent_path = Path(path)
+        result: set[str] = set()
+
+        for name in names:
+            current_path = parent_path / name
+            if current_path.is_relative_to(acg_root):
+                print(f"Ignoring {current_path!s}")
+                result.add(name)
+
+        return result
 
     if bootstrap_path.exists():
         shutil.copytree(
             bootstrap_path,
             project_root,
             dirs_exist_ok=True,
-            ignore=_ignore_top_level_acg,
+            ignore=_ignore_acg_root,
         )
 
         expand_all_project_templates(ctx, delete_templates=True)
