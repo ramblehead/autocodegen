@@ -236,7 +236,7 @@ def generate(
         result: set[str] = set()
 
         for name in names:
-            target_path = (project_root / name).resolve(strict=True)
+            target_path = (project_root).resolve(strict=True) / name
             if target_path == acg_root.resolve(strict=True):
                 print(f"Preventing acg root override {target_path!s}")
                 result.add(name)
