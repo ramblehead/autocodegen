@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 TEMPLATE_EXT = ".mako"
 RENAME_EXT = ".rename"
 
-ACG_NAME_DEFAULT = "acg"
+# ACG_NAME_DEFAULT = "acg"
 
 
 class ProjectContext(NamedTuple):
