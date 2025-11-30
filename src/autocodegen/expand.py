@@ -104,10 +104,10 @@ def expand_all_project_templates(
     delete_templates: bool,
 ) -> None:
     in_template_files = get_paths_by_ext(
-        project_root=ctx.config.project_root,
+        project_root=ctx.config["project_root"],
         ext=TEMPLATE_EXT,
         with_dirs=False,
-        acg_root=ctx.config.acg_root,
+        acg_root=ctx.config["acg_root"],
     )
 
     if in_template_files:
@@ -155,7 +155,7 @@ def get_rename_destination_path(
 
 def process_renames(ctx: ProjectContext, *, delete_origins: bool) -> None:
     orig_paths = get_paths_by_ext(
-        project_root=ctx.config.project_root,
+        project_root=ctx.config["project_root"],
         ext=RENAME_EXT,
         with_dirs=True,
         acg_root=ctx.acg_template_path,
@@ -204,7 +204,7 @@ def process_renames(ctx: ProjectContext, *, delete_origins: bool) -> None:
 
 
 def generate(acg_template_name: str, config: Config) -> None:
-    acg_template_path = config.acg_root / acg_template_name
+    acg_template_path = config["acg_root"] / acg_template_name
     bootstrap_path = acg_template_path / "bootstrap"
 
     print(bootstrap_path)
@@ -218,8 +218,8 @@ def generate(acg_template_name: str, config: Config) -> None:
         result: set[str] = set()
 
         for name in names:
-            target_path = config.project_root / name
-            if target_path == config.acg_root.resolve:
+            target_path = config["project_root"] / name
+            if target_path == config["acg_root"].resolve:
                 print(f"Preventing acg root override {target_path!s}")
                 result.add(name)
 
@@ -228,7 +228,7 @@ def generate(acg_template_name: str, config: Config) -> None:
     if bootstrap_path.exists():
         shutil.copytree(
             bootstrap_path,
-            config.project_root,
+            config["project_root"],
             dirs_exist_ok=True,
             ignore=_ignore_acg_root,
         )

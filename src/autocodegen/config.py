@@ -1,12 +1,12 @@
 # Hey Emacs, this is -*- coding: utf-8; mode: python -*-
 
-from typing import TYPE_CHECKING, NamedTuple
+from typing import TYPE_CHECKING, TypedDict
 
 if TYPE_CHECKING:
     from pathlib import Path
 
 
-class Config(NamedTuple):
+class Config(TypedDict):
     project_name: str
     project_root: Path
     acg_root: Path
