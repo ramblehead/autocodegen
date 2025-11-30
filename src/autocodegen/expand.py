@@ -9,11 +9,12 @@ from typing import TYPE_CHECKING, NamedTuple, Self
 from mako.lookup import TemplateLookup  # type: ignore reportMissingStubs
 
 from . import utils
-from .config import Config, config_default
 
 if TYPE_CHECKING:
     from collections.abc import Callable
     from types import ModuleType
+
+    from .config import Config
 
 TEMPLATE_EXT = ".mako"
 RENAME_EXT = ".rename"
@@ -22,17 +23,8 @@ ACG_NAME_DEFAULT = "acg"
 
 
 class ProjectContext(NamedTuple):
-    project_root: Path
-    acg_root: Path
     acg_template_path: Path
     config: Config
-
-
-def config_ensure_valid(config: Config, project_root: Path) -> Config:
-    if "project_name" not in config or config["project_name"] is None:
-        config["project_name"] = project_root.name
-
-    return config
 
 
 class ImportFromFileError(ModuleNotFoundError):
@@ -112,10 +104,10 @@ def expand_all_project_templates(
     delete_templates: bool,
 ) -> None:
     in_template_files = get_paths_by_ext(
-        project_root=ctx.project_root,
+        project_root=ctx.config.project_root,
         ext=TEMPLATE_EXT,
         with_dirs=False,
-        acg_root=ctx.acg_root,
+        acg_root=ctx.config.acg_root,
     )
 
     if in_template_files:
@@ -163,7 +155,7 @@ def get_rename_destination_path(
 
 def process_renames(ctx: ProjectContext, *, delete_origins: bool) -> None:
     orig_paths = get_paths_by_ext(
-        project_root=ctx.project_root,
+        project_root=ctx.config.project_root,
         ext=RENAME_EXT,
         with_dirs=True,
         acg_root=ctx.acg_template_path,
@@ -211,33 +203,21 @@ def process_renames(ctx: ProjectContext, *, delete_origins: bool) -> None:
                 shutil.copy2(orig_path, dest_path_str)
 
 
-def generate(
-    project_root: str | Path,
-    acg_root: str | Path,
-    acg_template_name: str,
-    config: Config | None = None,
-) -> None:
-    project_root = Path(project_root)
-    acg_root = Path(acg_root)
-    acg_template_path = acg_root / acg_template_name
+def generate(acg_template_name: str, config: Config) -> None:
+    acg_template_path = config.acg_root / acg_template_name
     bootstrap_path = acg_template_path / "bootstrap"
-    config = config_default if config is None else {**config_default, **config}
 
     ctx = ProjectContext(
-        project_root,
-        acg_root,
         acg_template_path,
-        config_ensure_valid(config, project_root),
+        config,
     )
-
-    acg_template_name = config["acg_template_name"]
 
     def _ignore_acg_root(_path: str, names: list[str]) -> set[str]:
         result: set[str] = set()
 
         for name in names:
-            target_path = (project_root).resolve(strict=True) / name
-            if target_path == acg_root.resolve(strict=True):
+            target_path = config.project_root / name
+            if target_path == config.acg_root.resolve:
                 print(f"Preventing acg root override {target_path!s}")
                 result.add(name)
 
@@ -246,15 +226,13 @@ def generate(
     if bootstrap_path.exists():
         shutil.copytree(
             bootstrap_path,
-            project_root,
+            config.project_root,
             dirs_exist_ok=True,
             ignore=_ignore_acg_root,
         )
 
         expand_all_project_templates(ctx, delete_templates=True)
         process_renames(ctx, delete_origins=True)
-
-        print("xxx", str(bootstrap_path))
 
 
 # def expand_and_implode(

@@ -1,15 +1,12 @@
 # Hey Emacs, this is -*- coding: utf-8; mode: python -*-
 
-from typing import TypedDict
+from typing import TYPE_CHECKING, NamedTuple
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
-class Config(TypedDict):
-    # When None use project directory name as project_name
-    project_name: str | None
-    acg_template_name: str
-
-
-config_default: Config = {
-    "project_name": None,
-    "acg_template_name": "acg",
-}
+class Config(NamedTuple):
+    project_name: str
+    project_root: Path
+    acg_root: Path
