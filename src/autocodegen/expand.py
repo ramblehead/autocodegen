@@ -207,6 +207,8 @@ def generate(acg_template_name: str, config: Config) -> None:
     acg_template_path = config.acg_root / acg_template_name
     bootstrap_path = acg_template_path / "bootstrap"
 
+    print(bootstrap_path)
+
     ctx = ProjectContext(
         acg_template_path,
         config,
