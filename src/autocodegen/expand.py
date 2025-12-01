@@ -4,9 +4,11 @@ import importlib.util
 import os
 import shutil
 from pathlib import Path
-from typing import TYPE_CHECKING, NamedTuple, Self
+from typing import TYPE_CHECKING, NamedTuple, Self, cast
 
-from mako.lookup import TemplateLookup  # type: ignore reportMissingStubs
+from mako.lookup import (  # pyright: ignore [reportMissingTypeStubs]
+    TemplateLookup,
+)
 
 from . import utils
 
@@ -48,6 +50,33 @@ def import_module_from_file(
     return module
 
 
+def get_rename_destination_path(
+    ctx: ProjectContext,
+    orig_path_str: str,
+    *,
+    delete_origins: bool,
+) -> str:
+    holder_path_str = orig_path_str[: -len(RENAME_EXT)]
+
+    renamer_path = Path(f"{holder_path_str}.rename.py")
+    if renamer_path.is_file():
+        renamer_mod = import_module_from_file(renamer_path)
+
+        reaname = cast(
+            "Callable[[Config, ModuleType], str]",
+            renamer_mod.rename,
+        )
+
+        renamed_path = renamer_path.parent / reaname(ctx.config, utils)
+
+        if delete_origins:
+            renamer_path.unlink(missing_ok=True)
+
+        return str(renamed_path)
+
+    return holder_path_str
+
+
 def expand_template(
     in_template_path: Path,
     out_file_path: Path,
@@ -56,18 +85,22 @@ def expand_template(
 ) -> None:
     template_lookup = TemplateLookup(directories=[in_template_path.parent])
 
-    template = template_lookup.get_template(  # type: ignore unknownMemberType
+    template = template_lookup.get_template(  # pyright: ignore [reportUnknownMemberType, reportUnknownVariableType]
         in_template_path.name,
     )
 
-    file_out_str: str = template.render(  # type: ignore unknownMemberType
-        config=ctx.config,
-        utils=utils,
+    file_out_str = (  # pyright: ignore [reportUnknownVariableType]
+        template.render(  # pyright: ignore [reportUnknownMemberType]
+            config=ctx.config,
+            utils=utils,
+        )
     )
 
     try:
         with Path.open(out_file_path, "w") as file:
-            file.write(file_out_str)
+            _ = file.write(
+                file_out_str,  # pyright: ignore [reportArgumentType]
+            )
     except OSError as cause:
         print(f"Error writing to file: {cause}")
 
@@ -128,31 +161,6 @@ def expand_all_project_templates(
             in_template_file.unlink()
 
 
-def get_rename_destination_path(
-    ctx: ProjectContext,
-    orig_path_str: str,
-    *,
-    delete_origins: bool,
-) -> str:
-    holder_path_str = orig_path_str[: -len(RENAME_EXT)]
-
-    renamer_path = Path(f"{holder_path_str}.rename.py")
-    if renamer_path.is_file():
-        reanamer_mod = import_module_from_file(renamer_path)
-
-        # if hasattr(reanamer_mod, "rename"):
-        reaname: Callable[[Config, ModuleType], str] = reanamer_mod.rename
-        renamed_path = renamer_path.parent / reaname(ctx.config, utils)
-
-        if delete_origins:
-            del reanamer_mod, reaname
-            renamer_path.unlink()
-
-        return str(renamed_path)
-
-    return holder_path_str
-
-
 def process_renames(ctx: ProjectContext, *, delete_origins: bool) -> None:
     orig_paths = get_paths_by_ext(
         project_root=ctx.config["project_root"],
@@ -175,7 +183,7 @@ def process_renames(ctx: ProjectContext, *, delete_origins: bool) -> None:
             )
 
             if not orig_path.is_dir():
-                shutil.move(orig_path, dest_path_str)
+                _ = shutil.move(orig_path, dest_path_str)
                 # shutil.copy2(orig_path, dest_path_str)
                 # orig_path.unlink()
             else:
@@ -183,7 +191,7 @@ def process_renames(ctx: ProjectContext, *, delete_origins: bool) -> None:
 
         # Then move directories
         for orig_dir_path_str, dest_dir_path_str in dirs_to_move:
-            shutil.move(orig_dir_path_str, dest_dir_path_str)
+            _ = shutil.move(orig_dir_path_str, dest_dir_path_str)
 
     else:
         for orig_path in orig_paths:
@@ -196,11 +204,11 @@ def process_renames(ctx: ProjectContext, *, delete_origins: bool) -> None:
             )
 
             if orig_path.is_dir():
-                shutil.copytree(orig_path, dest_path_str)
+                _ = shutil.copytree(orig_path, dest_path_str)
             else:
                 # shutil.copy(orig_path, dest_path_str)
                 # shutil.copystat(orig_path, dest_path_str)
-                shutil.copy2(orig_path, dest_path_str)
+                _ = shutil.copy2(orig_path, dest_path_str)
 
 
 def generate(acg_template_name: str, config: Config) -> None:
@@ -226,7 +234,7 @@ def generate(acg_template_name: str, config: Config) -> None:
         return result
 
     if bootstrap_path.exists():
-        shutil.copytree(
+        _ = shutil.copytree(
             bootstrap_path,
             config["project_root"],
             dirs_exist_ok=True,
