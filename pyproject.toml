@@ -6,9 +6,7 @@ authors = [{ name = "ramblehead", email = "<v.rybynok@gmail.com>" }]
 readme = "README.md"
 requires-python = "==3.14.*"
 
-dependencies = [
-  # "mako~=1.2.4",
-]
+dependencies = ["mako~=1.2.4"]
 
 [project.scripts]
 acg = "autocodegen.main:main"
