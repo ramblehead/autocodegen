@@ -3,6 +3,7 @@
 import importlib.util
 import os
 import shutil
+import subprocess
 from pathlib import Path
 from typing import TYPE_CHECKING, NamedTuple, Self, cast
 
@@ -227,7 +228,7 @@ def generate(acg_template_name: str, config: Config) -> None:
 
         for name in names:
             target_path = config["project_root"] / name
-            if target_path == config["acg_root"].resolve:
+            if target_path == config["acg_root"]:
                 print(f"Preventing acg root override {target_path!s}")
                 result.add(name)
 
@@ -243,6 +244,24 @@ def generate(acg_template_name: str, config: Config) -> None:
 
         expand_all_project_templates(ctx, delete_templates=True)
         process_renames(ctx, delete_origins=True)
+
+        # Wipe python cache directories
+        pyc_paths = get_paths_by_ext(
+            project_root=config["project_root"],
+            ext="__pycache__",
+            with_dirs=True,
+            acg_root=config["acg_root"],
+        )
+        pyc_path_strs = [str(p) for p in pyc_paths]
+
+        _ = subprocess.Popen(
+            (
+                'python -c "'
+                "import shutil;"
+                f'[shutil.rmtree(pyc, ignore_errors=True) for pyc in {pyc_path_strs}];"'
+            ),
+            shell=True,
+        )
 
 
 # def expand_and_implode(
