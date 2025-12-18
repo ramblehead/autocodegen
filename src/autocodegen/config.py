@@ -9,4 +9,4 @@ if TYPE_CHECKING:
 class Config(TypedDict):
     project_name: str
     project_root: Path
-    acg_root: Path
+    acg_templates: Path

@@ -141,7 +141,7 @@ def expand_all_project_templates(
         project_root=ctx.config["project_root"],
         ext=TEMPLATE_EXT,
         with_dirs=False,
-        acg_root=ctx.config["acg_root"],
+        acg_root=ctx.config["acg_templates"],
     )
 
     if in_template_files:
@@ -213,7 +213,7 @@ def process_renames(ctx: ProjectContext, *, delete_origins: bool) -> None:
 
 
 def generate(acg_template_name: str, config: Config) -> None:
-    acg_template_path = config["acg_root"] / acg_template_name
+    acg_template_path = config["acg_templates"] / acg_template_name
     bootstrap_path = acg_template_path / "bootstrap"
 
     print(bootstrap_path)
@@ -228,7 +228,7 @@ def generate(acg_template_name: str, config: Config) -> None:
 
         for name in names:
             target_path = config["project_root"] / name
-            if target_path == config["acg_root"]:
+            if target_path == config["acg_templates"]:
                 print(f"Preventing acg root override {target_path!s}")
                 result.add(name)
 
@@ -250,7 +250,7 @@ def generate(acg_template_name: str, config: Config) -> None:
             project_root=config["project_root"],
             ext="__pycache__",
             with_dirs=True,
-            acg_root=config["acg_root"],
+            acg_root=config["acg_templates"],
         )
         pyc_path_strs = [str(p) for p in pyc_paths]
 
