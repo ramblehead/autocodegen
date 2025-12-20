@@ -138,7 +138,7 @@ def expand_all_project_templates(
     delete_templates: bool,
 ) -> None:
     in_template_files = get_paths_by_ext(
-        project_root=ctx.config["project_root"],
+        project_root=ctx.config["target_root"],
         ext=TEMPLATE_EXT,
         with_dirs=False,
         acg_root=ctx.config["acg_templates"],
@@ -164,7 +164,7 @@ def expand_all_project_templates(
 
 def process_renames(ctx: ProjectContext, *, delete_origins: bool) -> None:
     orig_paths = get_paths_by_ext(
-        project_root=ctx.config["project_root"],
+        project_root=ctx.config["target_root"],
         ext=RENAME_EXT,
         with_dirs=True,
         acg_root=ctx.acg_template_path,
@@ -227,7 +227,7 @@ def generate(acg_template_name: str, config: Config) -> None:
         result: set[str] = set()
 
         for name in names:
-            target_path = config["project_root"] / name
+            target_path = config["target_root"] / name
             if target_path == config["acg_templates"]:
                 print(f"Preventing acg root override {target_path!s}")
                 result.add(name)
@@ -237,7 +237,7 @@ def generate(acg_template_name: str, config: Config) -> None:
     if bootstrap_path.exists():
         _ = shutil.copytree(
             bootstrap_path,
-            config["project_root"],
+            config["target_root"],
             dirs_exist_ok=True,
             ignore=_ignore_acg_root,
         )
@@ -247,7 +247,7 @@ def generate(acg_template_name: str, config: Config) -> None:
 
         # Wipe python cache directories
         pyc_paths = get_paths_by_ext(
-            project_root=config["project_root"],
+            project_root=config["target_root"],
             ext="__pycache__",
             with_dirs=True,
             acg_root=config["acg_templates"],
