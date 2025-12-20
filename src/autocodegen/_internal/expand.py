@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from types import ModuleType
 
-    from .config import Config
+    from .config import TemplateConfig
 
 TEMPLATE_EXT = ".mako"
 RENAME_EXT = ".rename"
@@ -27,7 +27,7 @@ RENAME_EXT = ".rename"
 
 class ProjectContext(NamedTuple):
     acg_template_path: Path
-    config: Config
+    config: TemplateConfig
 
 
 class ImportFromFileError(ModuleNotFoundError):
@@ -64,7 +64,7 @@ def get_rename_destination_path(
         renamer_mod = import_module_from_file(renamer_path)
 
         reaname = cast(
-            "Callable[[Config, ModuleType], str]",
+            "Callable[[TemplateConfig, ModuleType], str]",
             renamer_mod.rename,
         )
 
@@ -192,7 +192,14 @@ def process_renames(ctx: ProjectContext, *, delete_origins: bool) -> None:
 
         # Then move directories
         for orig_dir_path_str, dest_dir_path_str in dirs_to_move:
-            _ = shutil.move(orig_dir_path_str, dest_dir_path_str)
+            _ = shutil.copytree(
+                orig_dir_path_str,
+                dest_dir_path_str,
+                symlinks=True,
+                dirs_exist_ok=True,
+                ignore_dangling_symlinks=True,
+            )
+            shutil.rmtree(orig_dir_path_str)
 
     else:
         for orig_path in orig_paths:
@@ -205,14 +212,20 @@ def process_renames(ctx: ProjectContext, *, delete_origins: bool) -> None:
             )
 
             if orig_path.is_dir():
-                _ = shutil.copytree(orig_path, dest_path_str)
+                _ = shutil.copytree(
+                    orig_path,
+                    dest_path_str,
+                    symlinks=True,
+                    dirs_exist_ok=True,
+                    ignore_dangling_symlinks=True,
+                )
             else:
                 # shutil.copy(orig_path, dest_path_str)
                 # shutil.copystat(orig_path, dest_path_str)
                 _ = shutil.copy2(orig_path, dest_path_str)
 
 
-def generate(acg_template_name: str, config: Config) -> None:
+def generate(acg_template_name: str, config: TemplateConfig) -> None:
     acg_template_path = config["acg_templates"] / acg_template_name
     bootstrap_path = acg_template_path / "bootstrap"
 
@@ -238,7 +251,9 @@ def generate(acg_template_name: str, config: Config) -> None:
         _ = shutil.copytree(
             bootstrap_path,
             config["target_root"],
+            symlinks=True,
             dirs_exist_ok=True,
+            ignore_dangling_symlinks=True,
             ignore=_ignore_acg_root,
         )
 

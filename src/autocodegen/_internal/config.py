@@ -6,7 +6,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-class Config(TypedDict):
+class TemplateConfig(TypedDict):
     project_name: str
     target_root: Path
     acg_templates: Path
