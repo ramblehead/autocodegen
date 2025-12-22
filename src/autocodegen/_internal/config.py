@@ -2,15 +2,9 @@
 
 import copy
 from pathlib import Path
-from typing import Any, Self, TypedDict, cast
+from typing import Any, Self, cast
 
 from pydantic import BaseModel, ConfigDict
-
-
-class TemplateConfig(TypedDict):
-    project_name: str
-    target_root: Path
-    acg_templates: Path
 
 
 class BaseModelNoExtra(BaseModel):
@@ -75,5 +69,18 @@ class ProjectConfig(BaseModelNoExtra):
             autocodegen["project_name"] = autocodegen["project_root"].stem
 
         data_processed["autocodegen"] = autocodegen
+
+        if "templates" not in data_processed:
+            data_processed["templates"] = {}
+
+        templates_from_dirs = {
+            item.name: {"target_root": Path()}
+            for item in sorted(acg_dir.iterdir())
+            if item.is_dir() and item.name not in data_processed["templates"]
+        }
+
+        _ = data_processed["templates"].update(  # pyright: ignore[reportUnknownMemberType]
+            templates_from_dirs,
+        )  # fmt: skip
 
         return cls.model_validate(data_processed)

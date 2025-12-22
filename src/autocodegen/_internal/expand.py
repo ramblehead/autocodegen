@@ -17,17 +17,17 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from types import ModuleType
 
-    from .config import TemplateConfig
-
 TEMPLATE_EXT = ".mako"
 RENAME_EXT = ".rename"
 
 # ACG_NAME_DEFAULT = "acg"
 
 
-class ProjectContext(NamedTuple):
-    acg_template_path: Path
-    config: TemplateConfig
+class Context(NamedTuple):
+    project_name: str
+    template_name: str
+    target_root: Path
+    templates_root: Path
 
 
 class ImportFromFileError(ModuleNotFoundError):
@@ -52,7 +52,7 @@ def import_module_from_file(
 
 
 def get_rename_destination_path(
-    ctx: ProjectContext,
+    ctx: Context,
     orig_path_str: str,
     *,
     delete_origins: bool,
@@ -64,11 +64,16 @@ def get_rename_destination_path(
         renamer_mod = import_module_from_file(renamer_path)
 
         reaname = cast(
-            "Callable[[TemplateConfig, ModuleType], str]",
+            "Callable[[dict[str, str], ModuleType], str]",
             renamer_mod.rename,
         )
 
-        renamed_path = renamer_path.parent / reaname(ctx.config, utils)
+        renamed_path = renamer_path.parent / reaname(
+            {
+                "project_name": ctx.project_name,
+            },
+            utils,
+        )
 
         if delete_origins:
             renamer_path.unlink(missing_ok=True)
@@ -82,7 +87,7 @@ def expand_template(
     in_template_path: Path,
     out_file_path: Path,
     *,
-    ctx: ProjectContext,
+    ctx: Context,
 ) -> None:
     template_lookup = TemplateLookup(directories=[in_template_path.parent])
 
@@ -92,7 +97,9 @@ def expand_template(
 
     file_out_str = (  # pyright: ignore [reportUnknownVariableType]
         template.render(  # pyright: ignore [reportUnknownMemberType]
-            config=ctx.config,
+            config={
+                "project_name": ctx.project_name,
+            },
             utils=utils,
         )
     )
@@ -108,14 +115,14 @@ def expand_template(
 
 def get_paths_by_ext(
     *,
-    project_root: Path,
+    target_root: Path,
     ext: str,
     with_dirs: bool,
-    acg_root: Path,
+    templates_root: Path,
 ) -> list[Path]:
     result: list[Path] = []
 
-    for root, dir_names, file_names in os.walk(project_root):
+    for root, dir_names, file_names in os.walk(target_root):
         names = file_names
         if with_dirs:
             names += dir_names
@@ -125,7 +132,7 @@ def get_paths_by_ext(
             for file_name in file_names
             if (
                 file_name.endswith(ext)
-                and not (Path(root) / file_name).is_relative_to(acg_root)
+                and not (Path(root) / file_name).is_relative_to(templates_root)
             )
         ]
 
@@ -133,15 +140,15 @@ def get_paths_by_ext(
 
 
 def expand_all_project_templates(
-    ctx: ProjectContext,
+    ctx: Context,
     *,
     delete_templates: bool,
 ) -> None:
     in_template_files = get_paths_by_ext(
-        project_root=ctx.config["target_root"],
+        target_root=ctx.target_root,
         ext=TEMPLATE_EXT,
         with_dirs=False,
-        acg_root=ctx.config["acg_templates"],
+        templates_root=ctx.templates_root,
     )
 
     if in_template_files:
@@ -162,12 +169,12 @@ def expand_all_project_templates(
             in_template_file.unlink()
 
 
-def process_renames(ctx: ProjectContext, *, delete_origins: bool) -> None:
+def process_renames(ctx: Context, *, delete_origins: bool) -> None:
     orig_paths = get_paths_by_ext(
-        project_root=ctx.config["target_root"],
+        target_root=ctx.target_root,
         ext=RENAME_EXT,
         with_dirs=True,
-        acg_root=ctx.acg_template_path,
+        templates_root=ctx.templates_root / ctx.template_name,
     )
 
     if delete_origins:
@@ -225,23 +232,31 @@ def process_renames(ctx: ProjectContext, *, delete_origins: bool) -> None:
                 _ = shutil.copy2(orig_path, dest_path_str)
 
 
-def generate(acg_template_name: str, config: TemplateConfig) -> None:
-    acg_template_path = config["acg_templates"] / acg_template_name
-    bootstrap_path = acg_template_path / "bootstrap"
+def generate(
+    *,
+    project_name: str,
+    template_name: str,
+    target_root: Path,
+    templates_root: Path,
+) -> None:
+    template_path = templates_root / template_name
+    bootstrap_path = template_path / "bootstrap"
 
     print(bootstrap_path)
 
-    ctx = ProjectContext(
-        acg_template_path,
-        config,
+    ctx = Context(
+        project_name,
+        template_name,
+        target_root,
+        templates_root,
     )
 
     def _ignore_acg_root(_path: str, names: list[str]) -> set[str]:
         result: set[str] = set()
 
         for name in names:
-            target_path = config["target_root"] / name
-            if target_path == config["acg_templates"]:
+            target_path = target_root / name
+            if target_path == templates_root:
                 print(f"Preventing acg root override {target_path!s}")
                 result.add(name)
 
@@ -250,7 +265,7 @@ def generate(acg_template_name: str, config: TemplateConfig) -> None:
     if bootstrap_path.exists():
         _ = shutil.copytree(
             bootstrap_path,
-            config["target_root"],
+            target_root,
             symlinks=True,
             dirs_exist_ok=True,
             ignore_dangling_symlinks=True,
@@ -262,13 +277,15 @@ def generate(acg_template_name: str, config: TemplateConfig) -> None:
 
         # Wipe python cache directories
         pyc_paths = get_paths_by_ext(
-            project_root=config["target_root"],
+            target_root=target_root,
             ext="__pycache__",
             with_dirs=True,
-            acg_root=config["acg_templates"],
+            templates_root=templates_root,
         )
+
         pyc_path_strs = [str(p) for p in pyc_paths]
 
+        # Remove python cache files
         _ = subprocess.Popen(
             (
                 'python -c "'
