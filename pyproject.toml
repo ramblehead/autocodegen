@@ -35,7 +35,7 @@ lint.ignore = [
   "S607", # Starting a process with a partial executable path
 
   # Should be enabled later when project is more mature
-  "D", # pydocstyle
+  # "D", # pydocstyle
 
   # Should be enabled for releases
   "ERA001", # eradicate (e.g. comments)
