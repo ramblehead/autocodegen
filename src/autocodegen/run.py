@@ -23,10 +23,14 @@ import sys
 import tomllib
 from pathlib import Path
 
-from autocodegen import ProjectConfig, generate
+from autocodegen import ProjectConfig, ProjectConfigWorkspace, generate
 
 
-def find_topmost_acg(start_path: Path | None = None) -> Path | None:
+class AcgDirectoryNotFoundError(RuntimeError):
+    """Raised when a required 'acg' directory is missing."""
+
+
+def find_acg_project_root(start_path: Path | None = None) -> Path | None:
     """Find the topmost directory containing a subdirectory named 'acg'.
 
     Traverses upward from the starting path (default: current working directory)
@@ -57,39 +61,57 @@ def find_topmost_acg(start_path: Path | None = None) -> Path | None:
     return matches[-1] if matches else None
 
 
-def find_acg_dirs(root: Path) -> list[Path]:
-    """Find all 'acg' directories under root (inclusive), sorted top-down.
+def find_workspace_acg_dirs(
+    acg_project_root: Path,
+    acg_config_workspace: ProjectConfigWorkspace,
+) -> list[Path]:
+    """Return a list of all 'acg' directories in the autocodegen workspace.
 
-    - Follows symlinks to directories (default pathlib behavior)
-    - Preserves logical paths (no .resolve())
-    - Returns Path to each 'acg' directory
-    - Sorted top-down: shallower paths (closer to root) come first
+    This function locates:
+    - The top-level 'acg' directory directly under ``acg_project_root``
+    - An 'acg' directory inside each workspace member defined in
+      ``acg_config_workspace.members``
+
+    The search is performed relative to the provided paths without resolving
+    symlinks, preserving the logical structure.
+
+    Args:
+        acg_project_root: The root directory of the autocodegen project.
+        acg_config_workspace: Configuration object containing the list of
+            workspace members (relative paths).
 
     Returns:
-        list of Paths to all 'acg' directories, ordered top-down
+        List of ``Path`` objects pointing to all discovered 'acg' directories,
+        ordered top-down (top-level 'acg' first, followed by member 'acg'
+        directories in the order of ``members``).
+
+    Raises:
+        AcgDirectoryNotFoundError: If the top-level 'acg' directory or any
+            member's 'acg' directory does not exist or is not a directory.
 
     """
-    print("ooo", list(root.rglob("*")))
+    acg_dir_top = acg_project_root / "acg"
+    if not acg_dir_top.is_dir():
+        msg = f'Missing top-level "acg" directory in project root: {acg_project_root}'
+        raise AcgDirectoryNotFoundError(msg)
 
-    acg_dirs: list[Path] = [
-        dirpath / "acg"
-        for dirpath in root.rglob("*")
-        if dirpath.is_dir() and (dirpath / "acg").is_dir()
-    ]
+    acg_dirs: list[Path] = [acg_dir_top]
 
-    # Include root/acg if present
-    if (root / "acg").is_dir():
-        acg_dirs.append(root / "acg")
+    for member in acg_config_workspace.members:
+        acg_dir = Path(member) / "acg"
+        if not acg_dir.is_dir():
+            msg = f'Missing "acg" directory in workspace member: {member}'
+            raise AcgDirectoryNotFoundError(msg)
+        acg_dirs.append(acg_dir)
 
-    # Sort top-down: by number of path parts (depth), then lexicographically
-    return sorted(acg_dirs, key=lambda p: (len(p.parts), p.parts))
+    return acg_dirs
 
 
 def main() -> int:
     """Run main function."""
-    acg_prj = find_topmost_acg()
+    acg_project_root = find_acg_project_root()
 
-    if acg_prj is None:
+    if acg_project_root is None:
         print(
             (
                 "fatal: not a autocodegen repository "
@@ -99,17 +121,28 @@ def main() -> int:
         )
         return 1
 
-    acg_dirs = find_acg_dirs(acg_prj)
-    print("+++", acg_prj)
-    print("***", acg_dirs)
-
-    acg_dir = acg_prj / "acg"
+    acg_dir = acg_project_root / "acg"
 
     with Path.open(acg_dir / "config.toml", "rb") as f:
+        # print("xxx", json.dumps(tomllib.load(f), indent=2))
+        # print("xxx", tomllib.load(f))
+
         project_config = ProjectConfig.load(
             tomllib.load(f),
             acg_dir=acg_dir,
         )
+
+        try:
+            acg_dirs = find_workspace_acg_dirs(
+                acg_project_root,
+                project_config.workspace,
+            )
+        except AcgDirectoryNotFoundError as exc:
+            print(f"fatal: {exc}", file=sys.stderr)
+            return 1
+        except Exception:
+            raise
+
         print(
             json.dumps(
                 project_config.model_dump(mode="json"),
@@ -117,6 +150,9 @@ def main() -> int:
                 ensure_ascii=False,
             ),
         )
+
+    print("+++", acg_project_root)
+    print("***", acg_dirs)
 
     # print(f"project_name = {project_config.autocodegen.project_name}")
     # print(f"project_root = {project_config.autocodegen.project_root}")

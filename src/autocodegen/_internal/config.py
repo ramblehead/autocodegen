@@ -9,7 +9,7 @@ from pydantic import BaseModel, ConfigDict
 
 class BaseModelNoExtra(BaseModel):
     model_config = (  # pyright: ignore[reportUnannotatedClassAttribute]
-        ConfigDict(extra="ignore")
+        ConfigDict(extra="forbid")
     )
 
 
@@ -24,6 +24,10 @@ class ProjectConfigAutocodegen(BaseModelNoExtra):
     templates_root: Path
 
 
+class ProjectConfigWorkspace(BaseModelNoExtra):
+    members: list[Path] = []
+
+
 class ProjectConfigTemplate(BaseModelNoExtra):
     # "target_root": project_root if not in config
     # otherwise target_root path is relative to project_root
@@ -35,6 +39,7 @@ type TemplateName = str
 
 class ProjectConfig(BaseModelNoExtra):
     autocodegen: ProjectConfigAutocodegen
+    workspace: ProjectConfigWorkspace
     templates: dict[TemplateName, ProjectConfigTemplate]
 
     @classmethod
