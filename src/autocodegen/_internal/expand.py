@@ -59,7 +59,7 @@ def get_rename_destination_path(
 ) -> str:
     holder_path_str = orig_path_str[: -len(RENAME_EXT)]
 
-    renamer_path = Path(f"{holder_path_str}.rename.py")
+    renamer_path = Path(f"{holder_path_str}{RENAME_EXT}.py")
     if renamer_path.is_file():
         renamer_mod = import_module_from_file(renamer_path)
 
