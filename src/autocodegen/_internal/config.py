@@ -25,7 +25,7 @@ class ProjectConfigAutocodegen(BaseModelNoExtra):
 
 
 class ProjectConfigWorkspace(BaseModelNoExtra):
-    members: list[Path] = []
+    members: list[str] = []
 
 
 class ProjectConfigTemplate(BaseModelNoExtra):
@@ -39,7 +39,7 @@ type TemplateName = str
 
 class ProjectConfig(BaseModelNoExtra):
     autocodegen: ProjectConfigAutocodegen
-    workspace: ProjectConfigWorkspace
+    workspace: ProjectConfigWorkspace = ProjectConfigWorkspace()
     templates: dict[TemplateName, ProjectConfigTemplate]
 
     @classmethod
