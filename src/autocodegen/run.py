@@ -22,12 +22,9 @@ import json
 import sys
 import tomllib
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import Any
 
 from autocodegen import ProjectConfig, ProjectConfigWorkspace, generate
-
-if TYPE_CHECKING:
-    from collections.abc import Sequence
 
 
 class AcgDirectoryNotFoundError(RuntimeError):
@@ -111,6 +108,38 @@ def find_workspace_acg_dirs(
     return acg_dirs
 
 
+def load_acg_config(
+    acg_config_path: Path,
+) -> dict[str, Any]:  # pyright: ignore[reportExplicitAny]
+    """Load the ACG configuration from a TOML file.
+
+    If the file exists, it is parsed using :func:`tomllib.load` and the
+    resulting dictionary is returned. If the file does not exist or is not a
+    regular file, an empty dictionary is returned.
+
+    This behaviour allows callers to treat the configuration as optional without
+    needing separate existence checks.
+
+    Args:
+        acg_config_path: Path to the ``acg/config.toml`` configuration file.
+
+    Returns:
+        The parsed configuration as a dictionary. Keys are strings; values may
+        be of any type supported by TOML. Returns an empty dict if the file is
+        missing.
+
+    Note:
+        The function opens the file in binary mode (``"rb"``) as required by
+        :mod:`tomllib`.
+
+    """
+    if (acg_config_path).is_file():
+        with Path.open(acg_config_path, "rb") as f:
+            return tomllib.load(f)
+    else:
+        return {}
+
+
 def main() -> int:
     """Run main function."""
     acg_project_root = find_acg_project_root()
@@ -125,17 +154,10 @@ def main() -> int:
         )
         return 1
 
-    acg_dir = acg_project_root / "acg"
-
-    if (acg_dir / "config.toml").is_file():
-        with Path.open(acg_dir / "config.toml", "rb") as f:
-            project_config_dict = tomllib.load(f)
-    else:
-        project_config_dict = {}
-
+    project_acg_dir = acg_project_root / "acg"
     project_config = ProjectConfig.load(
-        project_config_dict,
-        acg_dir=acg_dir,
+        load_acg_config(project_acg_dir / "config.toml"),
+        acg_dir=project_acg_dir,
     )
 
     try:
@@ -166,14 +188,24 @@ def main() -> int:
     # print(f"project_root = {project_config.autocodegen.project_root}")
     # print(f"templates_root = {project_config.autocodegen.templates_root}")
 
-    for [name, config] in project_config.templates.items():
-        generate(
-            project_name=project_config.autocodegen.project_name,
-            template_name=name,
-            target_root=project_config.autocodegen.project_root
-            / config.target_root,
-            templates_root=acg_dir,
+    project_configs = [project_config]
+    project_configs.extend(
+        ProjectConfig.load(
+            load_acg_config(acg_dir / "config.toml"),
+            acg_dir=acg_dir,
         )
+        for acg_dir in acg_dirs[1:]
+    )
+
+    for project_config in project_configs:
+        for [name, config] in project_config.templates.items():
+            generate(
+                project_name=project_config.autocodegen.project_name,
+                template_name=name,
+                target_root=project_config.autocodegen.project_root
+                / config.target_root,
+                templates_root=project_acg_dir,
+            )
 
     return 0
 
