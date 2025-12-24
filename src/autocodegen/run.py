@@ -127,33 +127,37 @@ def main() -> int:
 
     acg_dir = acg_project_root / "acg"
 
-    with Path.open(acg_dir / "config.toml", "rb") as f:
-        # print("xxx", json.dumps(tomllib.load(f), indent=2))
-        # print("xxx", tomllib.load(f))
+    if (acg_dir / "config.toml").is_file():
+        with Path.open(acg_dir / "config.toml", "rb") as f:
+            project_config_dict = tomllib.load(f)
+    else:
+        project_config_dict = {}
 
-        project_config = ProjectConfig.load(
-            tomllib.load(f),
-            acg_dir=acg_dir,
+    project_config = ProjectConfig.load(
+        project_config_dict,
+        acg_dir=acg_dir,
+    )
+
+    try:
+        acg_dirs = find_workspace_acg_dirs(
+            acg_project_root,
+            project_config.workspace,
         )
 
-        try:
-            acg_dirs = find_workspace_acg_dirs(
-                acg_project_root,
-                project_config.workspace,
-            )
-        except AcgDirectoryNotFoundError as exc:
-            print(f"fatal: {exc}", file=sys.stderr)
-            return 1
-        except Exception:
-            raise
+    except AcgDirectoryNotFoundError as exc:
+        print(f"fatal: {exc}", file=sys.stderr)
+        return 1
 
-        print(
-            json.dumps(
-                project_config.model_dump(mode="json"),
-                indent=2,
-                ensure_ascii=False,
-            ),
-        )
+    except Exception:
+        raise
+
+    print(
+        json.dumps(
+            project_config.model_dump(mode="json"),
+            indent=2,
+            ensure_ascii=False,
+        ),
+    )
 
     print("+++", acg_project_root)
     print("***", acg_dirs)
