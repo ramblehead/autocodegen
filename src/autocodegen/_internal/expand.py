@@ -295,6 +295,8 @@ def generate(
             shell=True,
         )
 
+    print()
+
 
 # def expand_and_implode(
 #     acg_path: str | Path,
