@@ -181,13 +181,6 @@ def main() -> int:
         ),
     )
 
-    print("+++", acg_project_root)
-    print("***", acg_dirs)
-
-    # print(f"project_name = {project_config.autocodegen.project_name}")
-    # print(f"project_root = {project_config.autocodegen.project_root}")
-    # print(f"templates_root = {project_config.autocodegen.templates_root}")
-
     project_configs = [project_config]
     project_configs.extend(
         ProjectConfig.load(
