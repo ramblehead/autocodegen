@@ -60,7 +60,7 @@ def get_rename_destination_path(
     ctx: Context,
     orig_path_str: str,
     *,
-    delete_origins: bool,
+    delete_renamer: bool,
 ) -> str:
     holder_path_str = orig_path_str[: -len(RENAME_EXT)]
 
@@ -80,7 +80,7 @@ def get_rename_destination_path(
             utils,
         )
 
-        if delete_origins:
+        if delete_renamer:
             renamer_path.unlink(missing_ok=True)
 
         return str(renamed_path)
@@ -144,11 +144,7 @@ def get_paths_by_ext(
     return result
 
 
-def expand_all_project_templates(
-    ctx: Context,
-    *,
-    delete_templates: bool,
-) -> None:
+def expand_all_project_templates(ctx: Context) -> None:
     in_template_files = get_paths_by_ext(
         target_root=ctx.target_root,
         ext=TEMPLATE_MAKO_EXT,
@@ -169,12 +165,11 @@ def expand_all_project_templates(
         expand_template(in_template_file, out_file_path, ctx=ctx)
         shutil.copystat(in_template_file, out_file_path)
 
-    if delete_templates:
-        for in_template_file in in_template_files:
-            in_template_file.unlink()
+    for in_template_file in in_template_files:
+        in_template_file.unlink()
 
 
-def process_renames(ctx: Context, *, delete_origins: bool) -> None:
+def process_renames(ctx: Context) -> None:
     orig_paths = get_paths_by_ext(
         target_root=ctx.target_root,
         ext=RENAME_EXT,
@@ -182,59 +177,35 @@ def process_renames(ctx: Context, *, delete_origins: bool) -> None:
         templates_root=ctx.templates_root / ctx.template_name,
     )
 
-    if delete_origins:
-        dirs_to_move: list[tuple[str, str]] = []
+    dirs_to_move: list[tuple[str, str]] = []
 
-        # Move files first
-        for orig_path in orig_paths:
-            orig_path_str = str(orig_path)
+    # Move files first
+    for orig_path in orig_paths:
+        orig_path_str = str(orig_path)
 
-            dest_path_str = get_rename_destination_path(
-                ctx,
-                orig_path_str,
-                delete_origins=delete_origins,
-            )
+        dest_path_str = get_rename_destination_path(
+            ctx,
+            orig_path_str,
+            delete_renamer=True,
+        )
 
-            if not orig_path.is_dir():
-                _ = shutil.move(orig_path, dest_path_str)
-                # shutil.copy2(orig_path, dest_path_str)
-                # orig_path.unlink()
-            else:
-                dirs_to_move.append((orig_path_str, dest_path_str))
+        if not orig_path.is_dir():
+            _ = shutil.move(orig_path, dest_path_str)
+            # shutil.copy2(orig_path, dest_path_str)
+            # orig_path.unlink()
+        else:
+            dirs_to_move.append((orig_path_str, dest_path_str))
 
-        # Then move directories
-        for orig_dir_path_str, dest_dir_path_str in dirs_to_move:
-            _ = shutil.copytree(
-                orig_dir_path_str,
-                dest_dir_path_str,
-                symlinks=True,
-                dirs_exist_ok=True,
-                ignore_dangling_symlinks=True,
-            )
-            shutil.rmtree(orig_dir_path_str)
-
-    else:
-        for orig_path in orig_paths:
-            orig_path_str = str(orig_path)
-
-            dest_path_str = get_rename_destination_path(
-                ctx,
-                orig_path_str,
-                delete_origins=delete_origins,
-            )
-
-            if orig_path.is_dir():
-                _ = shutil.copytree(
-                    orig_path,
-                    dest_path_str,
-                    symlinks=True,
-                    dirs_exist_ok=True,
-                    ignore_dangling_symlinks=True,
-                )
-            else:
-                # shutil.copy(orig_path, dest_path_str)
-                # shutil.copystat(orig_path, dest_path_str)
-                _ = shutil.copy2(orig_path, dest_path_str)
+    # Then move directories
+    for orig_dir_path_str, dest_dir_path_str in dirs_to_move:
+        _ = shutil.copytree(
+            orig_dir_path_str,
+            dest_dir_path_str,
+            symlinks=True,
+            dirs_exist_ok=True,
+            ignore_dangling_symlinks=True,
+        )
+        shutil.rmtree(orig_dir_path_str)
 
 
 def generate(
@@ -277,8 +248,8 @@ def generate(
             ignore=_ignore_acg_root,
         )
 
-        expand_all_project_templates(ctx, delete_templates=True)
-        process_renames(ctx, delete_origins=True)
+        expand_all_project_templates(ctx)
+        process_renames(ctx)
 
         # Wipe python cache directories
         pyc_paths = get_paths_by_ext(
