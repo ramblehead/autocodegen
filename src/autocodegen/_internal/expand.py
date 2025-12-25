@@ -17,10 +17,15 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from types import ModuleType
 
-TEMPLATE_EXT = ".mako"
-RENAME_EXT = ".rename"
+TEMPLATE_MAKO_EXT = ".mako"
 
-# ACG_NAME_DEFAULT = "acg"
+# Renewable: Re-run on change (may overwrite target)
+TEMPLATE_GEN_EXT = ".gen.py"
+
+# Initial only: Run only if target doesn't exist (safe first-time setup)
+TEMPLATE_GEN_ONCE_EXT = ".gen1.py"
+
+RENAME_EXT = ".rename"
 
 
 class Context(NamedTuple):
@@ -146,7 +151,7 @@ def expand_all_project_templates(
 ) -> None:
     in_template_files = get_paths_by_ext(
         target_root=ctx.target_root,
-        ext=TEMPLATE_EXT,
+        ext=TEMPLATE_MAKO_EXT,
         with_dirs=False,
         templates_root=ctx.templates_root,
     )
@@ -156,7 +161,7 @@ def expand_all_project_templates(
 
     for in_template_file in in_template_files:
         out_file_path_str = str(in_template_file)
-        out_file_path_str = out_file_path_str.removesuffix(TEMPLATE_EXT)
+        out_file_path_str = out_file_path_str.removesuffix(TEMPLATE_MAKO_EXT)
 
         out_file_path = Path(out_file_path_str)
 
