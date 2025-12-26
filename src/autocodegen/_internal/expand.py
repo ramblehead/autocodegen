@@ -183,6 +183,9 @@ def process_renames(ctx: Context) -> None:
         templates_root=templates_root,
     )
 
+    if orig_paths:
+        print("Renaming:")
+
     dirs_to_move: list[tuple[str, str]] = []
 
     # Move files first
@@ -196,6 +199,7 @@ def process_renames(ctx: Context) -> None:
         )
 
         if not orig_path.is_dir():
+            print(f"  {orig_path} -> {dest_path_str}")
             _ = shutil.move(orig_path, dest_path_str)
             # shutil.copy2(orig_path, dest_path_str)
             # orig_path.unlink()
@@ -204,6 +208,7 @@ def process_renames(ctx: Context) -> None:
 
     # Then move directories
     for orig_dir_path_str, dest_dir_path_str in dirs_to_move:
+        print(f"  {orig_dir_path_str}/ -> {dest_dir_path_str}/")
         _ = shutil.copytree(
             orig_dir_path_str,
             dest_dir_path_str,
