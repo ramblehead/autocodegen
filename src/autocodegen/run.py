@@ -101,7 +101,7 @@ def find_workspace_acg_dirs(
     members = acg_config_workspace.members if acg_config_workspace else []
 
     for member in members:
-        acg_dir = member / "acg"
+        acg_dir = acg_project_root / member / "acg"
         if not acg_dir.is_dir():
             msg = f'Missing "acg" directory in workspace member: {member}'
             raise AcgDirectoryNotFoundError(msg)
@@ -175,22 +175,23 @@ def main() -> int:
     except Exception:
         raise
 
-    print(
-        json.dumps(
-            project_config.model_dump(mode="json"),
-            indent=2,
-            ensure_ascii=False,
-        ),
-    )
+    # print(
+    #     "+++",
+    #     json.dumps(
+    #         project_config.model_dump(mode="json"),
+    #         indent=2,
+    #         ensure_ascii=False,
+    #     ),
+    # )
 
-    workspace_project_configs = (
+    workspace_project_configs = [
         ProjectConfig.load(
             load_acg_config(acg_dir / "config.toml"),
             acg_dir=acg_dir,
             project_name_default=project_config.autocodegen.project_name,
         )
         for acg_dir in acg_dirs[1:]
-    )
+    ]
 
     for workspace_project_config in workspace_project_configs:
         if workspace_project_config.workspace is not None:
@@ -208,6 +209,15 @@ def main() -> int:
     project_configs.extend(workspace_project_configs)
 
     for project_config in project_configs:
+        # print(
+        #     "***",
+        #     json.dumps(
+        #         project_config.model_dump(mode="json"),
+        #         indent=2,
+        #         ensure_ascii=False,
+        #     ),
+        # )
+
         for [name, config] in project_config.templates.items():
             target_root = (
                 project_config.autocodegen.project_root / config.target_dir

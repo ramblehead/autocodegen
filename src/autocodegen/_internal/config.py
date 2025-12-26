@@ -29,8 +29,8 @@ class ProjectConfigWorkspace(BaseModelNoExtra):
 
 
 class ProjectConfigTemplate(BaseModelNoExtra):
-    # "target_root": project_root if not in config
-    # otherwise target_root path is relative to project_root
+    # "target_dir": project_root if not in config
+    # otherwise target_dir path is relative to project_root
     target_dir: Path = Path()
 
 
@@ -72,7 +72,7 @@ class ProjectConfig(BaseModelNoExtra):
             data_processed["templates"] = {}
 
         templates_from_dirs = {
-            item.name: {"target_root": "."}
+            item.name: {"target_dir": "."}
             for item in sorted(acg_dir.iterdir())
             if item.is_dir() and item.name not in data_processed["templates"]
         }
