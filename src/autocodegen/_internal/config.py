@@ -31,7 +31,7 @@ class ProjectConfigWorkspace(BaseModelNoExtra):
 class ProjectConfigTemplate(BaseModelNoExtra):
     # "target_root": project_root if not in config
     # otherwise target_root path is relative to project_root
-    target_root: Path = Path()
+    target_dir: Path = Path()
 
 
 type TemplateName = str

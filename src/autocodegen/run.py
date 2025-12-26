@@ -210,7 +210,7 @@ def main() -> int:
     for project_config in project_configs:
         for [name, config] in project_config.templates.items():
             target_root = (
-                project_config.autocodegen.project_root / config.target_root
+                project_config.autocodegen.project_root / config.target_dir
             )
             generate(name, target_root, project_config, project_configs)
 
