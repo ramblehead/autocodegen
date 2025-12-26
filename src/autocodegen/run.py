@@ -64,7 +64,7 @@ def find_acg_project_root(start_path: Path | None = None) -> Path | None:
 
 def find_workspace_acg_dirs(
     acg_project_root: Path,
-    acg_config_workspace: ProjectConfigWorkspace,
+    acg_config_workspace: ProjectConfigWorkspace | None,
 ) -> list[Path]:
     """Return a list of all 'acg' directories in the autocodegen workspace.
 
@@ -79,7 +79,7 @@ def find_workspace_acg_dirs(
     Args:
         acg_project_root: The root directory of the autocodegen project.
         acg_config_workspace: Configuration object containing the list of
-            workspace members (relative paths).
+            workspace members (relative paths) or None (same as empty list).
 
     Returns:
         List of ``Path`` objects pointing to all discovered 'acg' directories,
@@ -98,7 +98,9 @@ def find_workspace_acg_dirs(
 
     acg_dirs: list[Path] = [acg_dir_top]
 
-    for member in acg_config_workspace.members:
+    members = acg_config_workspace.members if acg_config_workspace else []
+
+    for member in members:
         acg_dir = member / "acg"
         if not acg_dir.is_dir():
             msg = f'Missing "acg" directory in workspace member: {member}'
@@ -181,14 +183,29 @@ def main() -> int:
         ),
     )
 
-    project_configs = [project_config]
-    project_configs.extend(
+    workspace_project_configs = (
         ProjectConfig.load(
             load_acg_config(acg_dir / "config.toml"),
             acg_dir=acg_dir,
+            project_name_default=project_config.autocodegen.project_name,
         )
         for acg_dir in acg_dirs[1:]
     )
+
+    for workspace_project_config in workspace_project_configs:
+        if workspace_project_config.workspace is not None:
+            print(
+                (
+                    "fatal: workspace project may not contain "
+                    "nested workspaces: "
+                    f"{workspace_project_config.autocodegen.project_root}"
+                ),
+                file=sys.stderr,
+            )
+            return 1
+
+    project_configs = [project_config]
+    project_configs.extend(workspace_project_configs)
 
     for project_config in project_configs:
         for [name, config] in project_config.templates.items():

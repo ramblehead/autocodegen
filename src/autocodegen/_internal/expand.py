@@ -29,8 +29,8 @@ RENAME_EXT = ".rename"
 
 
 class Context(NamedTuple):
-    project_name: str
     template_name: str
+    project_name: str
     target_root: Path
     templates_root: Path
 

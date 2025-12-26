@@ -39,7 +39,7 @@ type TemplateName = str
 
 class ProjectConfig(BaseModelNoExtra):
     autocodegen: ProjectConfigAutocodegen
-    workspace: ProjectConfigWorkspace = ProjectConfigWorkspace()
+    workspace: ProjectConfigWorkspace | None = None
     templates: dict[TemplateName, ProjectConfigTemplate]
 
     @classmethod
@@ -48,6 +48,7 @@ class ProjectConfig(BaseModelNoExtra):
         data: dict[str, Any],  # pyright: ignore[reportExplicitAny]
         *,
         acg_dir: Path,
+        project_name_default: str | None = None,
     ) -> Self:
         data_processed = copy.deepcopy(data)
 
@@ -60,18 +61,22 @@ class ProjectConfig(BaseModelNoExtra):
 
         if "project_root" not in autocodegen:
             project_root = acg_dir.parent
+        elif isinstance(autocodegen["project_root"], str):
+            project_root_rel = autocodegen["project_root"]
+            project_root = (acg_dir / project_root_rel).resolve(strict=True)
         else:
-            project_root = Path(cast("str", autocodegen["project_root"]))
-
-            if project_root.is_absolute():
-                project_root = project_root.resolve(strict=True)
-            else:
-                project_root = (acg_dir / project_root).resolve(strict=True)
+            # project_root not string is config file error -
+            # let Pydantic report it.
+            project_root = autocodegen["project_root"] # fmt: skip # pyright: ignore[reportAny]
 
         autocodegen["project_root"] = project_root
 
         if "project_name" not in autocodegen:
-            autocodegen["project_name"] = autocodegen["project_root"].stem
+            autocodegen["project_name"] = (
+                project_name_default
+                if project_name_default is not None
+                else autocodegen["project_root"].stem
+            )
 
         data_processed["autocodegen"] = autocodegen
 
@@ -79,7 +84,7 @@ class ProjectConfig(BaseModelNoExtra):
             data_processed["templates"] = {}
 
         templates_from_dirs = {
-            item.name: {"target_root": Path()}
+            item.name: {"target_root": "."}
             for item in sorted(acg_dir.iterdir())
             if item.is_dir() and item.name not in data_processed["templates"]
         }
