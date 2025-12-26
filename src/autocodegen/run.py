@@ -209,13 +209,10 @@ def main() -> int:
 
     for project_config in project_configs:
         for [name, config] in project_config.templates.items():
-            generate(
-                project_name=project_config.autocodegen.project_name,
-                template_name=name,
-                target_root=project_config.autocodegen.project_root
-                / config.target_root,
-                templates_root=project_acg_dir,
+            target_root = (
+                project_config.autocodegen.project_root / config.target_root
             )
+            generate(name, target_root, project_config, project_configs)
 
     return 0
 

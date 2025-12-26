@@ -2,7 +2,7 @@
 
 import copy
 from pathlib import Path
-from typing import Any, Self, cast
+from typing import Any, Self
 
 from pydantic import BaseModel, ConfigDict
 
@@ -17,10 +17,10 @@ class ProjectConfigAutocodegen(BaseModelNoExtra):
     # "project_name": project-root.stem if not in config
     project_name: str
 
-    # "project_root": "acg_dir/.." if not in config
+    # "project_root": "acg_dir/.."
     project_root: Path
 
-    # "templates_root": "acg_dir" if not in config
+    # "templates_root": "acg_dir"
     templates_root: Path
 
 
@@ -56,20 +56,8 @@ class ProjectConfig(BaseModelNoExtra):
             data_processed.pop("autocodegen", {})
         )  # fmt: skip
 
-        if "templates_root" not in autocodegen:
-            autocodegen["templates_root"] = acg_dir.resolve(strict=True)
-
-        if "project_root" not in autocodegen:
-            project_root = acg_dir.parent
-        elif isinstance(autocodegen["project_root"], str):
-            project_root_rel = autocodegen["project_root"]
-            project_root = (acg_dir / project_root_rel).resolve(strict=True)
-        else:
-            # project_root not string is config file error -
-            # let Pydantic report it.
-            project_root = autocodegen["project_root"] # fmt: skip # pyright: ignore[reportAny]
-
-        autocodegen["project_root"] = project_root
+        autocodegen["templates_root"] = acg_dir
+        autocodegen["project_root"] = acg_dir.parent
 
         if "project_name" not in autocodegen:
             autocodegen["project_name"] = (

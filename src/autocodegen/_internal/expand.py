@@ -17,6 +17,8 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from types import ModuleType
 
+    from .config import ProjectConfig
+
 TEMPLATE_MAKO_EXT = ".mako"
 
 # Renewable: Re-run on change (may overwrite target)
@@ -33,6 +35,8 @@ class Context(NamedTuple):
     project_name: str
     target_root: Path
     templates_root: Path
+    project_config: ProjectConfig
+    project_configs: list[ProjectConfig]
 
 
 class ImportFromFileError(ModuleNotFoundError):
@@ -209,22 +213,25 @@ def process_renames(ctx: Context) -> None:
 
 
 def generate(
-    *,
-    project_name: str,
     template_name: str,
     target_root: Path,
-    templates_root: Path,
+    project_config: ProjectConfig,
+    project_configs: list[ProjectConfig],
 ) -> None:
+    project_name = project_config.autocodegen.project_name
+    templates_root = project_config.autocodegen.templates_root
     template_path = templates_root / template_name
     bootstrap_path = template_path / "bootstrap"
 
     print(bootstrap_path)
 
     ctx = Context(
-        project_name,
         template_name,
+        project_name,
         target_root,
         templates_root,
+        project_config,
+        project_configs,
     )
 
     def _ignore_acg_root(_path: str, names: list[str]) -> set[str]:
