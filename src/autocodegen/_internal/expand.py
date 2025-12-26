@@ -32,9 +32,7 @@ RENAME_EXT = ".rename"
 
 class Context(NamedTuple):
     template_name: str
-    project_name: str
     target_root: Path
-    templates_root: Path
     project_config: ProjectConfig
     project_configs: list[ProjectConfig]
 
@@ -79,7 +77,7 @@ def get_rename_destination_path(
 
         renamed_path = renamer_path.parent / reaname(
             {
-                "project_name": ctx.project_name,
+                "project_name": ctx.project_config.autocodegen.project_name,
             },
             utils,
         )
@@ -107,7 +105,7 @@ def expand_template(
     file_out_str = (  # pyright: ignore [reportUnknownVariableType]
         template.render(  # pyright: ignore [reportUnknownMemberType]
             config={
-                "project_name": ctx.project_name,
+                "project_name": ctx.project_config.autocodegen.project_name,
             },
             utils=utils,
         )
@@ -153,7 +151,7 @@ def expand_all_project_templates(ctx: Context) -> None:
         target_root=ctx.target_root,
         ext=TEMPLATE_MAKO_EXT,
         with_dirs=False,
-        templates_root=ctx.templates_root,
+        templates_root=ctx.project_config.autocodegen.templates_root,
     )
 
     if in_template_files:
@@ -174,11 +172,15 @@ def expand_all_project_templates(ctx: Context) -> None:
 
 
 def process_renames(ctx: Context) -> None:
+    templates_root = (
+        ctx.project_config.autocodegen.templates_root / ctx.template_name
+    )
+
     orig_paths = get_paths_by_ext(
         target_root=ctx.target_root,
         ext=RENAME_EXT,
         with_dirs=True,
-        templates_root=ctx.templates_root / ctx.template_name,
+        templates_root=templates_root,
     )
 
     dirs_to_move: list[tuple[str, str]] = []
@@ -218,7 +220,6 @@ def generate(
     project_config: ProjectConfig,
     project_configs: list[ProjectConfig],
 ) -> None:
-    project_name = project_config.autocodegen.project_name
     templates_root = project_config.autocodegen.templates_root
     template_path = templates_root / template_name
     bootstrap_path = template_path / "bootstrap"
@@ -227,9 +228,7 @@ def generate(
 
     ctx = Context(
         template_name,
-        project_name,
         target_root,
-        templates_root,
         project_config,
         project_configs,
     )
