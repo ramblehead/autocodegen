@@ -25,7 +25,7 @@ class ProjectConfigAutocodegen(BaseModelNoExtra):
 
 
 class ProjectConfigWorkspace(BaseModelNoExtra):
-    members: list[str] = []
+    members: list[Path] = []
 
 
 class ProjectConfigTemplate(BaseModelNoExtra):

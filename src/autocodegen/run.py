@@ -99,7 +99,7 @@ def find_workspace_acg_dirs(
     acg_dirs: list[Path] = [acg_dir_top]
 
     for member in acg_config_workspace.members:
-        acg_dir = Path(member) / "acg"
+        acg_dir = member / "acg"
         if not acg_dir.is_dir():
             msg = f'Missing "acg" directory in workspace member: {member}'
             raise AcgDirectoryNotFoundError(msg)
