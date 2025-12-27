@@ -18,13 +18,14 @@
 # ]
 # ///
 
-import json
+# import json
 import sys
 import tomllib
 from pathlib import Path
 from typing import Any
 
-from autocodegen import ProjectConfig, ProjectConfigWorkspace, generate
+from autocodegen import ProjectConfig, ProjectConfigWorkspace
+from autocodegen._internal.expand import generate
 
 
 class AcgDirectoryNotFoundError(RuntimeError):
