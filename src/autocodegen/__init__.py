@@ -1,6 +1,5 @@
 # Hey Emacs, this is -*- coding: utf-8; mode: python -*-
 
-from ._internal import utils
-from ._internal.config import ProjectConfig, ProjectConfigWorkspace
+from ._internal.expand import Context
 
-__all__ = ["ProjectConfig", "ProjectConfigWorkspace", "utils"]
+__all__ = ["Context"]

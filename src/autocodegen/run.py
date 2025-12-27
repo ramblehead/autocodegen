@@ -24,7 +24,7 @@ import tomllib
 from pathlib import Path
 from typing import Any
 
-from autocodegen import ProjectConfig, ProjectConfigWorkspace
+from autocodegen._internal.config import ProjectConfig, ProjectConfigWorkspace
 from autocodegen._internal.expand import generate
 
 

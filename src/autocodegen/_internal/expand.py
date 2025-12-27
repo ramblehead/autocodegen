@@ -27,6 +27,9 @@ TEMPLATE_GEN_EXT = ".gen.py"
 # Initial only: Run only if target doesn't exist (safe first-time setup)
 TEMPLATE_GEN_ONCE_EXT = ".gen1.py"
 
+# Fragment generation template
+FRAGMENT_GEN_EXT = ".fra.py"
+
 RENAME_EXT = ".rename"
 
 
@@ -69,18 +72,15 @@ def get_rename_destination_path(
     renamer_path = Path(f"{holder_path_str}{RENAME_EXT}.py")
     if renamer_path.is_file():
         renamer_mod = import_module_from_file(renamer_path)
+        reaname = cast("Callable[[Context], str]", renamer_mod.rename)
 
-        reaname = cast(
-            "Callable[[dict[str, str], ModuleType], str]",
-            renamer_mod.rename,
-        )
+        try:
+            new_name = reaname(ctx)
+        except Exception as exc:
+            exc.add_note(f"Failed executing reaname() from {renamer_path}")
+            raise
 
-        renamed_path = renamer_path.parent / reaname(
-            {
-                "project_name": ctx.project_config.autocodegen.project_name,
-            },
-            utils,
-        )
+        renamed_path = renamer_path.parent / new_name
 
         if delete_renamer:
             renamer_path.unlink(missing_ok=True)
@@ -283,53 +283,3 @@ def generate(
         )
 
     print()
-
-
-# def expand_and_implode(
-#     acg_path: str | Path,
-#     config: dict[str, Any] | None = None,
-# ) -> None:
-#     acg_path = Path(acg_path)
-#     config_user = cast("Config | None", config)
-#     ctx = create_project_context(
-#         path=Path(acg_path).parent,
-#         config=(
-#             config_default
-#             if config_user is None
-#             else config_default | config_user
-#         ),
-#     )
-
-#     process_expand(delete_origins=True, ctx=ctx)
-
-#     boom = "💥" if (platform.system() != "Windows") else "*Boom!*"
-#     print(f"\nImploding... {boom}")
-
-#     # Wipe python cache directories
-#     pyc_paths = get_paths_by_ext(ctx["path"], "__pycache__", with_dirs=True)
-#     pyc_path_strs = [str(p) for p in pyc_paths]
-
-#     subprocess.Popen(
-#         'python -c "'
-#         "import shutil;"
-#         f'[shutil.rmtree(pyc, ignore_errors=True) for pyc in {pyc_path_strs}];"',
-#         shell=True,
-#     )
-
-#     if platform.system() == "Windows":
-#         os.chdir(ctx["path"])
-#         sd_path = Path(__file__).parent
-#         os.startfile(  # noqa: S606 # type: ignore[reportGeneralTypeIssues]
-#             str(sd_path / "ms-implode.bat"),
-#         )
-#     else:
-#         rh_template_dir_path = ctx["path"] / "rh_template"
-#         subprocess.Popen(
-#             'python -c "'
-#             "import shutil;"
-#             f"shutil.rmtree('{rh_template_dir_path}', ignore_errors=True);"
-#             f"shutil.os.remove('{implode_script_path_str}');\"",
-#             shell=True,
-#         )
-
-#     input("\nPress Enter to exit...")
