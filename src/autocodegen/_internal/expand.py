@@ -90,7 +90,7 @@ def get_rename_destination_path(
     return holder_path_str
 
 
-def expand_template(
+def expand_mako(
     in_template_path: Path,
     out_file_path: Path,
     *,
@@ -146,7 +146,7 @@ def get_paths_by_ext(
     return result
 
 
-def expand_all_project_templates(ctx: Context) -> None:
+def expand_mako_all(ctx: Context) -> None:
     in_template_files = get_paths_by_ext(
         target_root=ctx.target_root,
         ext=TEMPLATE_MAKO_EXT,
@@ -155,7 +155,7 @@ def expand_all_project_templates(ctx: Context) -> None:
     )
 
     if in_template_files:
-        print("Expanding from templates:")
+        print("Expanding from mako templates:")
 
     for in_template_file in in_template_files:
         out_file_path_str = str(in_template_file)
@@ -164,7 +164,7 @@ def expand_all_project_templates(ctx: Context) -> None:
         out_file_path = Path(out_file_path_str)
 
         print(f"  {out_file_path}")
-        expand_template(in_template_file, out_file_path, ctx=ctx)
+        expand_mako(in_template_file, out_file_path, ctx=ctx)
         shutil.copystat(in_template_file, out_file_path)
 
     for in_template_file in in_template_files:
@@ -259,7 +259,7 @@ def generate(
             ignore=_ignore_acg_root,
         )
 
-        expand_all_project_templates(ctx)
+        expand_mako_all(ctx)
         process_renames(ctx)
 
         # Wipe python cache directories
