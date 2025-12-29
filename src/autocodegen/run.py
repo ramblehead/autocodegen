@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Hey Emacs, this is -*- coding: utf-8; mode: python -*-
+# Hey Emacs, this is -*- coding: utf-8 -*-
 
 # /// script
 # requires-python = "==3.14.*"
@@ -172,9 +172,6 @@ def main() -> int:
     except AcgDirectoryNotFoundError as exc:
         print(f"fatal: {exc}", file=sys.stderr)
         return 1
-
-    except Exception:
-        raise
 
     # print(
     #     "+++",

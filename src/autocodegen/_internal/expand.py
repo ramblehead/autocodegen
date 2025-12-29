@@ -1,9 +1,10 @@
-# Hey Emacs, this is -*- coding: utf-8; mode: python -*-
+# Hey Emacs, this is -*- coding: utf-8 -*-
 
 import importlib.util
 import os
 import shutil
 import subprocess
+from inspect import isfunction
 from pathlib import Path
 from typing import TYPE_CHECKING, NamedTuple, Self, cast
 
@@ -31,6 +32,7 @@ TEMPLATE_GEN_ONCE_EXT = ".gen1.py"
 FRAGMENT_GEN_EXT = ".fra.py"
 
 RENAME_EXT = ".rename"
+RENAMER_EXT = ".rename.py"
 
 
 class Context(NamedTuple):
@@ -40,25 +42,64 @@ class Context(NamedTuple):
     project_configs: list[ProjectConfig]
 
 
-class ImportFromFileError(ModuleNotFoundError):
+type GenerateFunc = Callable[[Context], str]
+type RenameFunc = Callable[[Context], str]
+
+
+class InvalidGeneratorError(Exception):
+    """Raised when gen module does not provide a valid interface functions."""
+
+
+class ModuleDynamicImportError(ModuleNotFoundError):
+    """Raised when gen module file cannot be loaded."""
+
     def __init__(self: Self, module_path: Path) -> None:
-        super().__init__(f"Module '{module_path}' not found.")
+        super().__init__(
+            f"Failed to import gen module: '{module_path}'",
+        )
 
 
 def import_module_from_file(
-    module_path: Path,
+    mod_path: Path,
     *,
-    module_name: str | None = None,
+    mod_name: str | None = None,
 ) -> ModuleType:
-    module_name = module_name or module_path.stem
-    spec = importlib.util.spec_from_file_location(module_name, module_path)
+    """Import a module from a file path."""
+    if not mod_path.is_file():
+        raise ModuleDynamicImportError(mod_path)
+
+    mod_name = mod_name or mod_path.stem
+    spec = importlib.util.spec_from_file_location(mod_name, mod_path)
 
     if spec is None or spec.loader is None:
-        raise ImportFromFileError(module_path)
+        raise ModuleDynamicImportError(mod_path)
 
     module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    try:
+        spec.loader.exec_module(module)
+    except Exception as exc:
+        raise ModuleDynamicImportError(mod_path) from exc
+
     return module
+
+
+def import_generate_func(gen_mod_path: Path) -> GenerateFunc:
+    gen_mod = import_module_from_file(gen_mod_path)
+
+    generate_func = getattr(gen_mod, "generate", None)
+    if not isfunction(generate_func):
+        msg = f"Module '{gen_mod_path}' does not define a 'generate' function."
+        raise InvalidGeneratorError(msg)
+
+    if generate_func.__code__.co_argcount != 1:
+        msg = (
+            f"The 'generate' function in '{gen_mod_path}' "
+            "must take exactly one parameter (ctx) "
+            f"but it has {generate_func.__code__.co_argcount}."
+        )
+        raise InvalidGeneratorError(msg)
+
+    return cast("Callable[[Context], str]", generate_func)
 
 
 def get_rename_destination_path(
@@ -67,9 +108,9 @@ def get_rename_destination_path(
     *,
     delete_renamer: bool,
 ) -> str:
-    holder_path_str = orig_path_str[: -len(RENAME_EXT)]
+    dest_path_str = orig_path_str[: -len(RENAME_EXT)]
 
-    renamer_path = Path(f"{holder_path_str}{RENAME_EXT}.py")
+    renamer_path = Path(f"{dest_path_str}{RENAMER_EXT}")
     if renamer_path.is_file():
         renamer_mod = import_module_from_file(renamer_path)
         reaname = cast("Callable[[Context], str]", renamer_mod.rename)
@@ -87,7 +128,7 @@ def get_rename_destination_path(
 
         return str(renamed_path)
 
-    return holder_path_str
+    return dest_path_str
 
 
 def expand_mako(
@@ -120,6 +161,76 @@ def expand_mako(
         print(f"Error writing to file: {cause}")
 
 
+def expand_mako_all(ctx: Context) -> None:
+    in_template_files = get_paths_by_ext(
+        target_root=ctx.target_root,
+        ext=TEMPLATE_MAKO_EXT,
+        with_dirs=False,
+        templates_root=ctx.project_config.autocodegen.templates_root,
+    )
+
+    if in_template_files:
+        print("Expanding from mako templates:")
+
+    for in_template_file in in_template_files:
+        out_file_path_str = str(in_template_file)
+        out_file_path_str = out_file_path_str.removesuffix(TEMPLATE_MAKO_EXT)
+
+        out_file_path = Path(out_file_path_str)
+
+        print(f"  {out_file_path}")
+        expand_mako(in_template_file, out_file_path, ctx=ctx)
+        shutil.copystat(in_template_file, out_file_path)
+
+    for in_template_file in in_template_files:
+        in_template_file.unlink()
+
+
+def expand_gen(
+    ctx: Context,
+    gen_mod_path: Path,
+    target_file_path: Path,
+) -> None:
+    generate = import_generate_func(gen_mod_path)
+
+    try:
+        target_str = generate(ctx)
+    except Exception as exc:
+        exc.add_note(f"Failed executing generate(ctx) from {gen_mod_path}")
+        raise
+
+    try:
+        with Path.open(target_file_path, "w") as file:
+            _ = file.write(target_str)
+    except Exception as exc:
+        exc.add_note(f"Failed writing to target file: {target_file_path}")
+        raise
+
+
+def expand_gen_all(ctx: Context) -> None:
+    gen_mod_paths = get_paths_by_ext(
+        target_root=ctx.target_root,
+        ext=TEMPLATE_GEN_EXT,
+        with_dirs=False,
+        templates_root=ctx.project_config.autocodegen.templates_root,
+    )
+
+    if gen_mod_paths:
+        print("Expanding from gen templates:")
+
+    for gen_mod_path in gen_mod_paths:
+        gen_mod_path_str = str(gen_mod_path).removesuffix(TEMPLATE_GEN_EXT)
+
+        target_file_path = Path(gen_mod_path_str)
+
+        print(f"  {target_file_path}")
+        expand_gen(ctx, gen_mod_path, target_file_path)
+        shutil.copystat(gen_mod_path, target_file_path)
+
+    for gen_mod_path in gen_mod_paths:
+        gen_mod_path.unlink()
+
+
 def get_paths_by_ext(
     *,
     target_root: Path,
@@ -144,31 +255,6 @@ def get_paths_by_ext(
         ]
 
     return result
-
-
-def expand_mako_all(ctx: Context) -> None:
-    in_template_files = get_paths_by_ext(
-        target_root=ctx.target_root,
-        ext=TEMPLATE_MAKO_EXT,
-        with_dirs=False,
-        templates_root=ctx.project_config.autocodegen.templates_root,
-    )
-
-    if in_template_files:
-        print("Expanding from mako templates:")
-
-    for in_template_file in in_template_files:
-        out_file_path_str = str(in_template_file)
-        out_file_path_str = out_file_path_str.removesuffix(TEMPLATE_MAKO_EXT)
-
-        out_file_path = Path(out_file_path_str)
-
-        print(f"  {out_file_path}")
-        expand_mako(in_template_file, out_file_path, ctx=ctx)
-        shutil.copystat(in_template_file, out_file_path)
-
-    for in_template_file in in_template_files:
-        in_template_file.unlink()
 
 
 def process_renames(ctx: Context) -> None:
@@ -260,6 +346,7 @@ def generate(
         )
 
         expand_mako_all(ctx)
+        expand_gen_all(ctx)
         process_renames(ctx)
 
         # Wipe python cache directories
