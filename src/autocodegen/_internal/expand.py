@@ -219,10 +219,7 @@ def expand_gen(
         raise
 
 
-def expand_gen_all(
-    ctx: Context,
-    gen_ext: GenExt,
-) -> None:
+def expand_gen_all(ctx: Context, gen_ext: GenExt) -> None:
     gen_mod_paths = get_paths_by_ext(
         target_root=ctx.target_root,
         ext=gen_ext,
@@ -271,10 +268,7 @@ def get_paths_by_ext(
     return result
 
 
-def process_renames(
-    ctx: Context,
-    ren_ext: RenExt,
-) -> None:
+def process_renames(ctx: Context, ren_ext: RenExt) -> None:
     templates_root = (
         ctx.project_config.autocodegen.templates_root / ctx.template_name
     )
