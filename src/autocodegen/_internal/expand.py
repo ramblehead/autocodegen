@@ -231,7 +231,7 @@ def expand_gen_all(
     )
 
     if gen_mod_paths:
-        print("Expanding from gen templates:")
+        print(f"Expanding from '{gen_ext}' templates:")
 
     for gen_mod_path in gen_mod_paths:
         target_file_path_str = str(gen_mod_path).removesuffix(gen_ext)
@@ -287,7 +287,7 @@ def process_renames(
     )
 
     if orig_paths:
-        print("Renaming:")
+        print(f"Renaming '{ren_ext}':")
 
     dirs_to_move: list[tuple[str, str]] = []
 
