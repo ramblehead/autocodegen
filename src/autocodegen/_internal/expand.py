@@ -143,6 +143,32 @@ def get_rename_destination_path(
     return dest_path_str
 
 
+def get_paths_by_ext(
+    *,
+    target_root: Path,
+    ext: str,
+    with_dirs: bool,
+    templates_root: Path,
+) -> list[Path]:
+    result: list[Path] = []
+
+    for root, dir_names, file_names in os.walk(target_root):
+        names = file_names
+        if with_dirs:
+            names += dir_names
+
+        result += [
+            Path(root) / file_name
+            for file_name in file_names
+            if (
+                file_name.endswith(ext)
+                and not (Path(root) / file_name).is_relative_to(templates_root)
+            )
+        ]
+
+    return result
+
+
 def expand_mako(
     in_template_path: Path,
     out_file_path: Path,
@@ -242,32 +268,6 @@ def expand_gen_all(ctx: Context, gen_ext: GenExt) -> None:
         gen_mod_path.unlink()
 
 
-def get_paths_by_ext(
-    *,
-    target_root: Path,
-    ext: str,
-    with_dirs: bool,
-    templates_root: Path,
-) -> list[Path]:
-    result: list[Path] = []
-
-    for root, dir_names, file_names in os.walk(target_root):
-        names = file_names
-        if with_dirs:
-            names += dir_names
-
-        result += [
-            Path(root) / file_name
-            for file_name in file_names
-            if (
-                file_name.endswith(ext)
-                and not (Path(root) / file_name).is_relative_to(templates_root)
-            )
-        ]
-
-    return result
-
-
 def process_renames(ctx: Context, ren_ext: RenExt) -> None:
     templates_root = (
         ctx.project_config.autocodegen.templates_root / ctx.template_name
@@ -335,13 +335,16 @@ def generate(
         project_configs,
     )
 
-    def _ignore_acg_root(_path: str, names: list[str]) -> set[str]:
+    def _template_files_to_ignore(_path: str, names: list[str]) -> set[str]:
+        print(f"_path = {_path}")
+        print(f"names = {names}")
+
         result: set[str] = set()
 
         for name in names:
             target_path = target_root / name
             if target_path == templates_root:
-                print(f"Preventing acg root override {target_path!s}")
+                print(f"Preventing acg templates override {target_path!s}")
                 result.add(name)
 
         return result
@@ -353,7 +356,7 @@ def generate(
             symlinks=True,
             dirs_exist_ok=True,
             ignore_dangling_symlinks=True,
-            ignore=_ignore_acg_root,
+            ignore=_template_files_to_ignore,
         )
 
         expand_mako_all(ctx)
