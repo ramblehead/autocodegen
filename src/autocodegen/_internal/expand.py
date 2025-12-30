@@ -4,6 +4,7 @@ import importlib.util
 import os
 import shutil
 import subprocess
+from enum import StrEnum
 from inspect import isfunction
 from pathlib import Path
 from typing import TYPE_CHECKING, NamedTuple, Self, cast
@@ -22,17 +23,28 @@ if TYPE_CHECKING:
 
 TEMPLATE_MAKO_EXT = ".mako"
 
-# Renewable: Re-run on change (may overwrite target)
-TEMPLATE_GEN_EXT = ".gen.py"
 
-# Initial only: Run only if target doesn't exist (safe first-time setup)
-TEMPLATE_GEN_ONCE_EXT = ".gen1.py"
+class AcgExt(StrEnum):
+    GEN = ".gen.py"  # Renewable generator
+    GEN_ONCE = ".gen1.py"  # Once only generator (e.g. initial)
 
-# Fragment generation template
-FRAGMENT_GEN_EXT = ".fra.py"
+    REN = ".rename"  # File to rename
+    RENR = ".rename.py"  # Renamer - new name producer
 
-RENAME_EXT = ".rename"
-RENAMER_EXT = ".rename.py"
+    REN_ONCE = ".ren1"  # File to rename
+    RENR_ONCE = ".ren1.py"  # Renamer - new name producer
+
+    FRA = ".fra.py"  # Fragment
+
+
+class GenExt(StrEnum):
+    GEN = AcgExt.GEN
+    GEN_ONCE = AcgExt.GEN_ONCE
+
+
+class RenExt(StrEnum):
+    REN = AcgExt.REN
+    REN_ONCE = AcgExt.REN_ONCE
 
 
 class Context(NamedTuple):
@@ -108,9 +120,9 @@ def get_rename_destination_path(
     *,
     delete_renamer: bool,
 ) -> str:
-    dest_path_str = orig_path_str[: -len(RENAME_EXT)]
+    dest_path_str = orig_path_str[: -len(AcgExt.REN)]
 
-    renamer_path = Path(f"{dest_path_str}{RENAMER_EXT}")
+    renamer_path = Path(f"{dest_path_str}{AcgExt.RENR}")
     if renamer_path.is_file():
         renamer_mod = import_module_from_file(renamer_path)
         reaname = cast("Callable[[Context], str]", renamer_mod.rename)
@@ -207,10 +219,13 @@ def expand_gen(
         raise
 
 
-def expand_gen_all(ctx: Context) -> None:
+def expand_gen_all(
+    ctx: Context,
+    gen_ext: GenExt,
+) -> None:
     gen_mod_paths = get_paths_by_ext(
         target_root=ctx.target_root,
-        ext=TEMPLATE_GEN_EXT,
+        ext=gen_ext,
         with_dirs=False,
         templates_root=ctx.project_config.autocodegen.templates_root,
     )
@@ -219,9 +234,8 @@ def expand_gen_all(ctx: Context) -> None:
         print("Expanding from gen templates:")
 
     for gen_mod_path in gen_mod_paths:
-        gen_mod_path_str = str(gen_mod_path).removesuffix(TEMPLATE_GEN_EXT)
-
-        target_file_path = Path(gen_mod_path_str)
+        target_file_path_str = str(gen_mod_path).removesuffix(gen_ext)
+        target_file_path = Path(target_file_path_str)
 
         print(f"  {target_file_path}")
         expand_gen(ctx, gen_mod_path, target_file_path)
@@ -257,14 +271,17 @@ def get_paths_by_ext(
     return result
 
 
-def process_renames(ctx: Context) -> None:
+def process_renames(
+    ctx: Context,
+    ren_ext: RenExt,
+) -> None:
     templates_root = (
         ctx.project_config.autocodegen.templates_root / ctx.template_name
     )
 
     orig_paths = get_paths_by_ext(
         target_root=ctx.target_root,
-        ext=RENAME_EXT,
+        ext=ren_ext,
         with_dirs=True,
         templates_root=templates_root,
     )
@@ -346,8 +363,8 @@ def generate(
         )
 
         expand_mako_all(ctx)
-        expand_gen_all(ctx)
-        process_renames(ctx)
+        expand_gen_all(ctx, GenExt.GEN)
+        process_renames(ctx, RenExt.REN)
 
         # Wipe python cache directories
         pyc_paths = get_paths_by_ext(
