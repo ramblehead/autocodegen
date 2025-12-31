@@ -345,31 +345,31 @@ def generate(
         result: set[str] = set()
 
         for name in names:
+            entry = Path(path) / name
             target_path = target_root / name
+
             if target_path == templates_root:
                 print(f"Preventing templates root override {target_path!s}")
                 result.add(name)
-            else:
-                entry = Path(path) / name
-                if not init:
-                    if name.endswith((AcgExt.REN_ONCE, AcgExt.RENR_ONCE)):
-                        print(
-                            (
-                                f"Preventing '{AcgExt.REN_ONCE}' or "
-                                f"'{AcgExt.RENR_ONCE}' "
-                                f"re-init: {target_path!s}"
-                            ),
-                        )
-                        result.add(name)
+            elif not init:
+                if name.endswith((AcgExt.REN_ONCE, AcgExt.RENR_ONCE)):
+                    print(
+                        (
+                            f"Preventing '{AcgExt.REN_ONCE}' or "
+                            f"'{AcgExt.RENR_ONCE}' "
+                            f"re-init: {entry!s}"
+                        ),
+                    )
+                    result.add(name)
 
-                    if not entry.is_dir() and name.endswith(AcgExt.GEN_ONCE):
-                        print(
-                            (
-                                f"Preventing '{AcgExt.GEN_ONCE}' "
-                                f"re-init: {target_path!s}"
-                            ),
-                        )
-                        result.add(name)
+                if not entry.is_dir() and name.endswith(AcgExt.GEN_ONCE):
+                    print(
+                        (
+                            f"Preventing '{AcgExt.GEN_ONCE}' "
+                            f"re-init: {entry!s}"
+                        ),
+                    )
+                    result.add(name)
 
         return result
 
