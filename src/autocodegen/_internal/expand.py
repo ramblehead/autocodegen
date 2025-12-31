@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from types import ModuleType
 
-    from .config import ProjectConfig
+    from .config import ProjectConfig, ProjectConfigTemplate
 
 TEMPLATE_MAKO_EXT = ".mako"
 
@@ -318,13 +318,19 @@ def process_renames(ctx: Context, ren_ext: RenExt) -> None:
 
 def generate(
     template_name: str,
-    target_root: Path,
+    template_config: ProjectConfigTemplate,
     project_config: ProjectConfig,
     project_configs: list[ProjectConfig],
 ) -> None:
     templates_root = project_config.autocodegen.templates_root
     template_path = templates_root / template_name
     bootstrap_path = template_path / "bootstrap"
+
+    target_root = (
+        project_config.autocodegen.project_root / template_config.target_dir
+    )
+
+    init = project_config.autocodegen.init or template_config.init
 
     print(bootstrap_path)
 
@@ -335,17 +341,35 @@ def generate(
         project_configs,
     )
 
-    def _template_files_to_ignore(_path: str, names: list[str]) -> set[str]:
-        print(f"_path = {_path}")
-        print(f"names = {names}")
-
+    def _template_files_to_ignore(path: str, names: list[str]) -> set[str]:
         result: set[str] = set()
 
         for name in names:
             target_path = target_root / name
             if target_path == templates_root:
-                print(f"Preventing acg templates override {target_path!s}")
+                print(f"Preventing templates root override {target_path!s}")
                 result.add(name)
+            else:
+                entry = Path(path) / name
+                if not init:
+                    if name.endswith((AcgExt.REN_ONCE, AcgExt.RENR_ONCE)):
+                        print(
+                            (
+                                f"Preventing '{AcgExt.REN_ONCE}' or "
+                                f"'{AcgExt.RENR_ONCE}' "
+                                f"re-init: {target_path!s}"
+                            ),
+                        )
+                        result.add(name)
+
+                    if not entry.is_dir() and name.endswith(AcgExt.GEN_ONCE):
+                        print(
+                            (
+                                f"Preventing '{AcgExt.GEN_ONCE}' "
+                                f"re-init: {target_path!s}"
+                            ),
+                        )
+                        result.add(name)
 
         return result
 
@@ -360,6 +384,11 @@ def generate(
         )
 
         expand_mako_all(ctx)
+
+        if init:
+            expand_gen_all(ctx, GenExt.GEN_ONCE)
+            process_renames(ctx, RenExt.REN_ONCE)
+
         expand_gen_all(ctx, GenExt.GEN)
         process_renames(ctx, RenExt.REN)
 
