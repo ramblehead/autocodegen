@@ -351,6 +351,7 @@ def generate(
             if target_path == templates_root:
                 print(f"Preventing templates root override {target_path!s}")
                 result.add(name)
+
             elif not init:
                 if name.endswith((AcgExt.REN_ONCE, AcgExt.RENR_ONCE)):
                     print(
