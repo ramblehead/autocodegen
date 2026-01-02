@@ -24,7 +24,7 @@ class ProjectConfigAutocodegen(BaseModelNoExtra):
     templates_root: Path
 
     # init is True causes .gen1.py and .ren1 to expand
-    # Project-level init overrides corresponding templates-level init
+    # Project-level init overrides corresponding templates-level
     init: bool = True
 
 
@@ -40,6 +40,10 @@ class ProjectConfigTemplate(BaseModelNoExtra):
     # init is True causes .gen1.py and .ren1 to expand
     # Project-level init overrides corresponding templates-level init
     init: bool = False
+
+    # Defend dirs and files located in target_dir from changes
+    # during templates expansions
+    self_defence: bool = True
 
 
 type TemplateName = str

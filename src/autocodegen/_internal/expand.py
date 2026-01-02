@@ -49,9 +49,10 @@ class RenExt(StrEnum):
 
 class Context(NamedTuple):
     template_name: str
-    target_root: Path
+    template_config: ProjectConfigTemplate
     project_config: ProjectConfig
     project_configs: list[ProjectConfig]
+    target_root: Path
 
 
 type GenerateFunc = Callable[[Context], str]
@@ -245,6 +246,50 @@ def expand_gen(
         raise
 
 
+def is_file_in_directory(
+    file_path: Path,
+    dir_path: Path,
+) -> bool:
+    """Return True if the file is inside the dir (including subdirectories)."""
+    file = Path(file_path).resolve()  # Resolve symlinks and get absolute path
+    directory = Path(dir_path).resolve()
+
+    try:
+        return file.is_relative_to(directory)
+    except ValueError:  # Rare case, e.g., invalid path on some systems
+        return False
+
+
+def is_project_self_defence(
+    project_config: ProjectConfig,
+    target_file_path: Path,
+) -> bool:
+    if not is_file_in_directory(
+        target_file_path,
+        project_config.autocodegen.templates_root,
+    ):
+        return False
+
+    for template_config in project_config.templates.values():
+        template_path = (
+            project_config.autocodegen.templates_root
+            / template_config.target_dir
+        )
+
+        if is_file_in_directory(target_file_path, template_path):
+            return template_config.self_defence
+
+    return True
+
+
+def is_self_defence(ctx: Context, target_file_path: Path) -> bool:
+    for project_config in ctx.project_configs:
+        if is_project_self_defence(project_config, target_file_path):
+            return True
+
+    return False
+
+
 def expand_gen_all(ctx: Context, gen_ext: GenExt) -> None:
     gen_mod_paths = get_paths_by_ext(
         target_root=ctx.target_root,
@@ -336,9 +381,10 @@ def generate(
 
     ctx = Context(
         template_name,
-        target_root,
+        template_config,
         project_config,
         project_configs,
+        target_root,
     )
 
     def _template_files_to_ignore(path: str, names: list[str]) -> set[str]:
