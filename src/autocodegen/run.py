@@ -203,10 +203,10 @@ def main() -> int:
             )
             return 1
 
-    project_configs = [project_config]
-    project_configs.extend(workspace_project_configs)
+    workspace_configs = [project_config]
+    workspace_configs.extend(workspace_project_configs)
 
-    for project_config in project_configs:
+    for project_config in workspace_configs:
         # print(
         #     "***",
         #     json.dumps(
@@ -217,7 +217,7 @@ def main() -> int:
         # )
 
         for [name, config] in project_config.templates.items():
-            generate(name, config, project_config, project_configs)
+            generate(name, config, project_config, workspace_configs)
 
     return 0
 

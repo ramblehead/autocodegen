@@ -51,7 +51,7 @@ class Context(NamedTuple):
     template_name: str
     template_config: ProjectConfigTemplate
     project_config: ProjectConfig
-    project_configs: list[ProjectConfig]
+    workspace_configs: list[ProjectConfig]
     target_root: Path
 
 
@@ -251,8 +251,9 @@ def is_file_in_directory(
     dir_path: Path,
 ) -> bool:
     """Return True if the file is inside the dir (including subdirectories)."""
-    file = Path(file_path).resolve()  # Resolve symlinks and get absolute path
-    directory = Path(dir_path).resolve()
+    # Resolve symlinks and get absolute path
+    file = Path(file_path).resolve(strict=True)
+    directory = Path(dir_path).resolve(strict=True)
 
     try:
         return file.is_relative_to(directory)
@@ -282,12 +283,22 @@ def is_project_self_defence(
     return True
 
 
-def is_self_defence(ctx: Context, target_file_path: Path) -> bool:
-    for project_config in ctx.project_configs:
+def is_workspace_self_defence(ctx: Context, target_file_path: Path) -> bool:
+    for project_config in ctx.workspace_configs:
         if is_project_self_defence(project_config, target_file_path):
             return True
 
     return False
+
+
+def compute_dst_path(src_path: Path, src_root: Path, dst_root: Path) -> Path:
+    src_path_abs = src_path.resolve(strict=True)
+    src_root_abs = src_root.resolve(strict=True)
+    dst_root_abs = dst_root.resolve(strict=True)
+
+    origin_rel = src_path_abs.relative_to(src_root_abs)
+
+    return dst_root_abs / origin_rel
 
 
 def expand_gen_all(ctx: Context, gen_ext: GenExt) -> None:
@@ -365,7 +376,7 @@ def generate(
     template_name: str,
     template_config: ProjectConfigTemplate,
     project_config: ProjectConfig,
-    project_configs: list[ProjectConfig],
+    workspace_configs: list[ProjectConfig],
 ) -> None:
     templates_root = project_config.autocodegen.templates_root
     template_path = templates_root / template_name
@@ -383,7 +394,7 @@ def generate(
         template_name,
         template_config,
         project_config,
-        project_configs,
+        workspace_configs,
         target_root,
     )
 
@@ -391,11 +402,19 @@ def generate(
         result: set[str] = set()
 
         for name in names:
-            entry = Path(path) / name
-            target_path = target_root / name
+            origin_path = Path(path) / name
+            target_path_f = target_root / name
 
-            if target_path == templates_root:
-                print(f"Preventing templates root override {target_path!s}")
+            target_path = compute_dst_path(
+                origin_path,
+                bootstrap_path,
+                target_root,
+            )
+
+            print(f"*** {origin_path} -> {target_path}")
+
+            if target_path_f == templates_root:
+                print(f"Preventing templates root override {target_path_f!s}")
                 result.add(name)
 
             elif not init:
@@ -404,16 +423,16 @@ def generate(
                         (
                             f"Preventing '{AcgExt.REN_ONCE}' or "
                             f"'{AcgExt.RENR_ONCE}' "
-                            f"re-init: {entry!s}"
+                            f"re-init: {origin_path!s}"
                         ),
                     )
                     result.add(name)
 
-                if not entry.is_dir() and name.endswith(AcgExt.GEN_ONCE):
+                if not origin_path.is_dir() and name.endswith(AcgExt.GEN_ONCE):
                     print(
                         (
                             f"Preventing '{AcgExt.GEN_ONCE}' "
-                            f"re-init: {entry!s}"
+                            f"re-init: {origin_path!s}"
                         ),
                     )
                     result.add(name)
