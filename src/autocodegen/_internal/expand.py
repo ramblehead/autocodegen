@@ -252,21 +252,22 @@ def is_file_in_directory(
 ) -> bool:
     """Return True if the file is inside the dir (including subdirectories)."""
     # Resolve symlinks and get absolute path
-    file = Path(file_path).resolve(strict=True)
-    directory = Path(dir_path).resolve(strict=True)
+    # Not using strict=True here as paths might not exist
+    file_path_abs = Path(file_path).resolve()
+    dir_path_abs = Path(dir_path).resolve()
 
     try:
-        return file.is_relative_to(directory)
+        return file_path_abs.is_relative_to(dir_path_abs)
     except ValueError:  # Rare case, e.g., invalid path on some systems
         return False
 
 
 def is_project_self_defence(
     project_config: ProjectConfig,
-    target_file_path: Path,
+    target_path: Path,
 ) -> bool:
     if not is_file_in_directory(
-        target_file_path,
+        target_path,
         project_config.autocodegen.templates_root,
     ):
         return False
@@ -277,15 +278,15 @@ def is_project_self_defence(
             / template_config.target_dir
         )
 
-        if is_file_in_directory(target_file_path, template_path):
+        if is_file_in_directory(target_path, template_path):
             return template_config.self_defence
 
     return True
 
 
-def is_workspace_self_defence(ctx: Context, target_file_path: Path) -> bool:
+def is_workspace_self_defence(ctx: Context, target_path: Path) -> bool:
     for project_config in ctx.workspace_configs:
-        if is_project_self_defence(project_config, target_file_path):
+        if is_project_self_defence(project_config, target_path):
             return True
 
     return False
@@ -386,8 +387,6 @@ def generate(
         project_config.autocodegen.project_root / template_config.target_dir
     )
 
-    init = project_config.autocodegen.init or template_config.init
-
     print(bootstrap_path)
 
     ctx = Context(
@@ -402,37 +401,36 @@ def generate(
         result: set[str] = set()
 
         for name in names:
-            origin_path = Path(path) / name
-            target_path_f = target_root / name
+            src_path = Path(path) / name
 
-            target_path = compute_dst_path(
-                origin_path,
+            dst_path = compute_dst_path(
+                src_path,
                 bootstrap_path,
                 target_root,
             )
 
-            print(f"*** {origin_path} -> {target_path}")
+            print(f"*** {src_path} -> {dst_path}")
 
-            if target_path_f == templates_root:
-                print(f"Preventing templates root override {target_path_f!s}")
+            if is_workspace_self_defence(ctx, dst_path):
+                print(f"Preventing acg templates override {dst_path!s}")
                 result.add(name)
 
-            elif not init:
+            elif not template_config.init:
                 if name.endswith((AcgExt.REN_ONCE, AcgExt.RENR_ONCE)):
                     print(
                         (
                             f"Preventing '{AcgExt.REN_ONCE}' or "
                             f"'{AcgExt.RENR_ONCE}' "
-                            f"re-init: {origin_path!s}"
+                            f"re-init: {src_path!s}"
                         ),
                     )
                     result.add(name)
 
-                if not origin_path.is_dir() and name.endswith(AcgExt.GEN_ONCE):
+                if not src_path.is_dir() and name.endswith(AcgExt.GEN_ONCE):
                     print(
                         (
                             f"Preventing '{AcgExt.GEN_ONCE}' "
-                            f"re-init: {origin_path!s}"
+                            f"re-init: {src_path!s}"
                         ),
                     )
                     result.add(name)
@@ -451,7 +449,7 @@ def generate(
 
         expand_mako_all(ctx)
 
-        if init:
+        if template_config.init:
             expand_gen_all(ctx, GenExt.GEN_ONCE)
             process_renames(ctx, RenExt.REN_ONCE)
 

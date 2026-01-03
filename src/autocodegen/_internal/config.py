@@ -23,10 +23,6 @@ class ProjectConfigAutocodegen(BaseModelNoExtra):
     # "templates_root": "acg_dir"
     templates_root: Path
 
-    # init is True causes .gen1.py and .ren1 to expand
-    # Project-level init overrides corresponding templates-level
-    init: bool = True
-
 
 class ProjectConfigWorkspace(BaseModelNoExtra):
     members: list[Path] = []
@@ -39,7 +35,7 @@ class ProjectConfigTemplate(BaseModelNoExtra):
 
     # init is True causes .gen1.py and .ren1 to expand
     # Project-level init overrides corresponding templates-level init
-    init: bool = False
+    init: bool = True
 
     # Defend dirs and files located in target_dir from changes
     # during templates expansions
