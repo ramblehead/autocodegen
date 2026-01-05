@@ -246,18 +246,10 @@ def expand_gen(
         raise
 
 
-def is_file_in_directory(
-    file_path: Path,
-    dir_path: Path,
-) -> bool:
+def is_file_in_directory(file_path: Path, dir_path: Path) -> bool:
     """Return True if the file is inside the dir (including subdirectories)."""
-    # Resolve symlinks and get absolute path
-    # Not using strict=True here as paths might not exist
-    file_path_abs = Path(file_path).resolve()
-    dir_path_abs = Path(dir_path).resolve()
-
     try:
-        return file_path_abs.is_relative_to(dir_path_abs)
+        return file_path.is_relative_to(dir_path)
     except ValueError:  # Rare case, e.g., invalid path on some systems
         return False
 
@@ -266,22 +258,30 @@ def is_project_self_defence(
     project_config: ProjectConfig,
     target_path: Path,
 ) -> bool:
-    if not is_file_in_directory(
+    if target_path == project_config.autocodegen.templates_root:
+        return False
+
+    print("aaa", target_path)
+    print("ooo", project_config.autocodegen.templates_root)
+
+    if is_file_in_directory(
         target_path,
         project_config.autocodegen.templates_root,
     ):
-        return False
+        for [
+            template_name,
+            template_config,
+        ] in project_config.templates.items():
+            template_path = (
+                project_config.autocodegen.templates_root / template_name
+            )
 
-    for template_config in project_config.templates.values():
-        template_path = (
-            project_config.autocodegen.templates_root
-            / template_config.target_dir
-        )
+            if is_file_in_directory(target_path, template_path):
+                return template_config.self_defence
 
-        if is_file_in_directory(target_path, template_path):
-            return template_config.self_defence
+        return True
 
-    return True
+    return False
 
 
 def is_workspace_self_defence(ctx: Context, target_path: Path) -> bool:
@@ -401,6 +401,8 @@ def generate(
         result: set[str] = set()
 
         for name in names:
+            print("%%%", name)
+
             src_path = Path(path) / name
 
             dst_path = compute_dst_path(
