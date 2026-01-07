@@ -1,6 +1,6 @@
 [project]
 name = "autocodegen"
-version = "0.0.1"
+version = "0.1.0"
 description = "Library and utilities for auto-code generators"
 authors = [{ name = "ramblehead", email = "<v.rybynok@gmail.com>" }]
 readme = "README.md"
