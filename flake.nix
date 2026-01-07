@@ -16,16 +16,17 @@
     flake-utils.lib.eachDefaultSystem (system: let
       pkgs = import nixpkgs {inherit system;};
 
-      uv = uv2nix.lib {
-        inherit pkgs;
+      uv = uv2nix.lib.mkUv2Nix {
         projectRoot = self;
       };
 
-      pythonEnv = uv.mkPythonEnv {};
+      # Build Python environment from uv.lock + pyproject.toml
+      pythonEnv = uv.mkPythonEnv {
+        inherit pkgs;
+      };
     in {
       packages.default = pythonEnv;
 
-      # Expose the correct script name for `nix run`
       apps.default = {
         type = "app";
         program = "${pythonEnv}/bin/acg";
