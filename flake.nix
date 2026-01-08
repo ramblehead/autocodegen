@@ -89,8 +89,14 @@
             ]
           );
 
+        runtimeDepsWithProject =
+          {
+            autocodegen = pythonSet.autocodegen;
+          }
+          // workspace.deps.default;
+
         pythonEnv =
-          pythonSet.mkVirtualEnv "autocodegen-env" workspace.deps.default;
+          pythonSet.mkVirtualEnv "autocodegen-env" runtimeDepsWithProject;
       in {
         # Package a virtual environment as our main application.
         #
