@@ -92,7 +92,7 @@
         runtimeDepsWithProject =
           workspace.deps.default
           // {
-            autocodegen = workspace.project;
+            autocodegen = pythonSet.autocodegen;
           };
 
         pythonEnv =
