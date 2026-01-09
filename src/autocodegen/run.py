@@ -46,13 +46,16 @@ def find_acg_project_root(start_path: Path | None = None) -> Path | None:
         Path to the topmost directory containing 'acg', or None if not found.
 
     """
-    if start_path is None:
-        start_path = Path.cwd()
+    current: Path = Path.cwd() if start_path is None else start_path
 
-    current: Path = start_path
+    parents = (
+        current.parents
+        if current.name == "acg"
+        else (current, *current.parents)
+    )
 
     # Collect matches from parents (deepest to shallowest)
-    matches = [p for p in current.parents if (p / "acg").is_dir()]
+    matches = [p for p in parents if (p / "acg").is_dir()]
 
     # Check filesystem root separately
     root = Path(current.root)

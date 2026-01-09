@@ -261,9 +261,6 @@ def is_project_self_defence(
     if target_path == project_config.autocodegen.templates_root:
         return False
 
-    print("aaa", target_path)
-    print("ooo", project_config.autocodegen.templates_root)
-
     if is_file_in_directory(
         target_path,
         project_config.autocodegen.templates_root,
@@ -401,7 +398,7 @@ def generate(
         result: set[str] = set()
 
         for name in names:
-            print("%%%", name)
+            # print("%%%", name)
 
             src_path = Path(path) / name
 
@@ -411,7 +408,7 @@ def generate(
                 target_root,
             )
 
-            print(f"*** {src_path} -> {dst_path}")
+            # print(f"*** {src_path} -> {dst_path}")
 
             if is_workspace_self_defence(ctx, dst_path):
                 print(f"Preventing acg templates override {dst_path!s}")
