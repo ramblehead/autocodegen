@@ -89,18 +89,26 @@
             ]
           );
 
-        venvDeps = workspace.deps.default;
-        pythonEnv = pythonSet.mkVirtualEnv "autocodegen-env" venvDeps;
+        # venvDeps = workspace.deps.default;
+        # pythonEnv = pythonSet.mkVirtualEnv "autocodegen-env" venvDeps;
+
+        autocodegenPkg = pythonSet.autocodegen.overrideAttrs (old: {
+          meta =
+            (old.meta or {})
+            // {
+              mainProgram = "acg";
+            };
+        });
       in {
         # Package a virtual environment as our main application.
         #
         # Enable no optional dependencies for production build.
-        packages.default = pythonEnv;
+        packages.default = autocodegenPkg;
 
-        apps.default = {
-          type = "app";
-          program = "${pythonEnv}/bin/acg";
-        };
+        # apps.default = {
+        #   type = "app";
+        #   program = "${pythonEnv}/bin/acg";
+        # };
       }
     );
 }
