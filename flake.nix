@@ -89,28 +89,35 @@
             ]
           );
 
-        venvDeps = workspace.deps.default;
-        pythonEnv = pythonSet.mkVirtualEnv "autocodegen-env" venvDeps;
+        autocodegenEnv =
+          pythonSet.mkVirtualEnv "autocodegen-env" workspace.deps.default;
+
+        inherit (pkgs.callPackage pyproject-nix.build.util {}) mkApplication;
+
+        autocodegenApp = mkApplication {
+          venv = autocodegenEnv;
+          package = pythonSet.autocodegen;
+        };
       in {
         # Package a virtual environment as our main application.
         #
         # Enable no optional dependencies for production build.
-        packages.default = pythonEnv;
+        packages.default = autocodegenApp;
 
         # apps.default = {
         #   type = "app";
         #   program = "${pythonEnv}/bin/acg";
         # };
 
-        apps.default = {
-          type = "app";
-          program = "${pkgs.writeShellScript "acg-wrapped" ''
-            echo Hi there! ${pythonEnv}/lib/python3.14/site-packages
-            export PYTHONPATH="${pythonEnv}/lib/python3.14/site-packages:$PYTHONPATH"
-            # unset PYTHONPATH
-            exec ${pythonEnv}/bin/acg " $$@"
-          ''}";
-        };
+        # apps.default = {
+        #   type = "app";
+        #   program = "${pkgs.writeShellScript "acg-wrapped" ''
+        #     echo Hi there! ${pythonEnv}/lib/python3.14/site-packages
+        #     export PYTHONPATH="${pythonEnv}/lib/python3.14/site-packages:$PYTHONPATH"
+        #     # unset PYTHONPATH
+        #     exec ${pythonEnv}/bin/acg " $$@"
+        #   ''}";
+        # };
       }
     );
 }
