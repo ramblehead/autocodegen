@@ -89,6 +89,8 @@
             ]
           );
 
+        inherit (pkgs.callPackage pyproject-nix.build.util {}) mkApplication;
+
         pythonEnv =
           pythonSet.mkVirtualEnv "autocodegen-env" workspace.deps.default;
 
@@ -102,10 +104,10 @@
         # Enable no optional dependencies for production build.
         packages.default = autocodegenApp;
 
-        # apps.default = {
-        #   type = "app";
-        #   program = "${pythonEnv}/bin/acg";
-        # };
+        apps.default = {
+          type = "app";
+          program = "${pythonEnv}/bin/acg";
+        };
       }
     );
 }
