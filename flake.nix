@@ -105,7 +105,7 @@
         apps.default = {
           type = "app";
           program = "${pkgs.writeShellScript "acg-wrapped" ''
-            echo Hi there!
+            echo Hi there! ${pythonEnv}/lib/python3.14/site-packages
             export PYTHONPATH="${pythonEnv}/lib/python3.14/site-packages:$PYTHONPATH"
             # unset PYTHONPATH
             exec ${pythonEnv}/bin/acg " $$@"
