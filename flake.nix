@@ -97,10 +97,10 @@
         # Enable no optional dependencies for production build.
         packages.default = pythonEnv;
 
-        # apps.default = {
-        #   type = "app";
-        #   program = "${autocodegenPkg}/bin/acg";
-        # };
+        apps.default = {
+          type = "app";
+          program = "${pythonEnv}/bin/acg";
+        };
       }
     );
 }
