@@ -88,16 +88,18 @@
               pyprojectOverrides
             ]
           );
+
+        autocodegenPkg = pythonSet.autocodegen;
       in {
         # Package a virtual environment as our main application.
         #
         # Enable no optional dependencies for production build.
-        packages.default = pythonSet.autocodegen;
+        packages.default = autocodegenPkg;
 
-        # apps.default = {
-        #   type = "app";
-        #   program = "${pythonEnv}/bin/acg";
-        # };
+        apps.default = {
+          type = "app";
+          program = "${autocodegenPkg}/bin/acg";
+        };
       }
     );
 }
