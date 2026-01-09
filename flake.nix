@@ -89,14 +89,8 @@
             ]
           );
 
-        runtimeWithProject =
-          workspace.deps.default
-          // {
-            autocodegen = pythonSet.autocodegen;
-          };
-
         pythonEnv =
-          pythonSet.mkVirtualEnv "autocodegen-env" runtimeWithProject;
+          pythonSet.mkVirtualEnv "autocodegen-env" pythonSet.autocodegen;
 
         inherit (pkgs.callPackage pyproject-nix.build.util {}) mkApplication;
 
