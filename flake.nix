@@ -89,23 +89,23 @@
             ]
           );
 
-        runtimeWithProject =
-          workspace.deps.default
-          // {
-            autocodegen = pythonSet.autocodegen.all;
-          };
+        pythonEnv =
+          pythonSet.mkVirtualEnv "autocodegen-env" workspace.deps.default;
 
-        pythonEnv = pythonSet.mkVirtualEnv "autocodegen-env" runtimeWithProject;
+        autocodegenApp = mkApplication {
+          venv = pythonEnv;
+          package = pythonSet.autocodegen;
+        };
       in {
         # Package a virtual environment as our main application.
         #
         # Enable no optional dependencies for production build.
-        packages.default = pythonEnv;
+        packages.default = autocodegenApp;
 
-        apps.default = {
-          type = "app";
-          program = "${pythonEnv}/bin/acg";
-        };
+        # apps.default = {
+        #   type = "app";
+        #   program = "${pythonEnv}/bin/acg";
+        # };
       }
     );
 }
