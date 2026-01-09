@@ -101,6 +101,10 @@
           type = "app";
           program = "${pythonEnv}/bin/acg";
         };
+
+        shellHook = ''
+          unset PYTHONPATH
+        '';
       }
     );
 }
