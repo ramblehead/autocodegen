@@ -12,7 +12,7 @@ dependencies = [
 ]
 
 [project.scripts]
-acg = "autocodegen.main:main"
+acg = "autocodegen.run:main"
 
 [dependency-groups]
 dev = [
