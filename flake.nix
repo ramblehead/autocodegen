@@ -88,21 +88,11 @@
               pyprojectOverrides
             ]
           );
-
-        pythonEnv =
-          pythonSet.mkVirtualEnv "autocodegen-env" pythonSet.autocodegen;
-
-        inherit (pkgs.callPackage pyproject-nix.build.util {}) mkApplication;
-
-        autocodegenApp = mkApplication {
-          venv = pythonEnv;
-          package = pythonSet.autocodegen;
-        };
       in {
         # Package a virtual environment as our main application.
         #
         # Enable no optional dependencies for production build.
-        packages.default = autocodegenApp;
+        packages.default = pythonSet.autocodegen;
 
         # apps.default = {
         #   type = "app";
