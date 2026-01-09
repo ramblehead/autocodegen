@@ -89,16 +89,22 @@
             ]
           );
 
-        autocodegenPkg = pythonSet.autocodegen;
+        venvDeps =
+          {
+            autocodegen = pythonSet.autocodegen; # This installs your src code
+          }
+          // workspace.deps.default;
+
+        pythonEnv = pythonSet.mkVirtualEnv "autocodegen-env" venvDeps;
       in {
         # Package a virtual environment as our main application.
         #
         # Enable no optional dependencies for production build.
-        packages.default = autocodegenPkg;
+        packages.default = pythonEnv;
 
         apps.default = {
           type = "app";
-          program = "${autocodegenPkg}/bin/acg";
+          program = "${pythonEnv}/bin/acg";
         };
       }
     );
