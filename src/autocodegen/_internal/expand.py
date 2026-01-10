@@ -292,7 +292,7 @@ def is_workspace_self_defence(ctx: Context, target_path: Path) -> bool:
 def compute_dst_path(src_path: Path, src_root: Path, dst_root: Path) -> Path:
     src_path_abs = src_path.resolve(strict=True)
     src_root_abs = src_root.resolve(strict=True)
-    dst_root_abs = dst_root.resolve(strict=True)
+    dst_root_abs = dst_root.resolve()
 
     origin_rel = src_path_abs.relative_to(src_root_abs)
 
