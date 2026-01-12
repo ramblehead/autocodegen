@@ -28,8 +28,8 @@ class AcgExt(StrEnum):
     GEN = ".gen.py"  # Renewable generator
     GEN_ONCE = ".gen1.py"  # Once only generator (e.g. initial)
 
-    REN = ".rename"  # File to rename
-    RENR = ".rename.py"  # Renamer - new name producer
+    REN = ".ren"  # File to rename
+    RENR = ".ren.py"  # Renamer - new name producer
 
     REN_ONCE = ".ren1"  # File to rename
     RENR_ONCE = ".ren1.py"  # Renamer - new name producer
