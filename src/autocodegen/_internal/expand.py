@@ -185,7 +185,7 @@ def expand_mako(
     file_out_str = (  # pyright: ignore [reportUnknownVariableType]
         template.render(  # pyright: ignore [reportUnknownMemberType]
             config={
-                "project_name": ctx.project_config.autocodegen.project_name,
+                "project_name": ctx.template_config.project_name,
             },
             utils=utils,
         )

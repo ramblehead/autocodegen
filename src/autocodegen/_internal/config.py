@@ -2,7 +2,7 @@
 
 import copy
 from pathlib import Path
-from typing import Any, Self
+from typing import Any, Self, cast
 
 from pydantic import BaseModel, ConfigDict
 
@@ -29,6 +29,9 @@ class ProjectConfigWorkspace(BaseModelNoExtra):
 
 
 class ProjectConfigTemplate(BaseModelNoExtra):
+    # "ProjectConfigAutocodegen.project_name": if not in config
+    project_name: str
+
     # "target_dir": project_root if not in config
     # otherwise target_dir path is relative to project_root
     target_dir: Path = Path()
@@ -89,4 +92,10 @@ class ProjectConfig(BaseModelNoExtra):
             templates_from_dirs,
         )  # fmt: skip
 
+        for [_, template] in data_processed["templates"].items():  # pyright: ignore[reportUnknownVariableType] # fmt: skip
+            if "project_name" not in template:
+                pn = cast("str", data_processed["autocodegen"]["project_name"])
+                template["project_name"] = pn
+
+        print(data_processed)
         return cls.model_validate(data_processed)
