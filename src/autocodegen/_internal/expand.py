@@ -7,7 +7,7 @@ import subprocess
 from enum import StrEnum
 from inspect import isfunction
 from pathlib import Path
-from typing import TYPE_CHECKING, NamedTuple, Self, cast
+from typing import TYPE_CHECKING, Literal, NamedTuple, Self, cast
 
 from mako.lookup import (  # pyright: ignore [reportMissingTypeStubs]
     TemplateLookup,
@@ -72,6 +72,19 @@ class ModuleDynamicImportError(ModuleNotFoundError):
         )
 
 
+def get_renr_from_ren_ext(
+    ren_ext: RenExt,
+) -> Literal[AcgExt.RENR, AcgExt.RENR_ONCE]:
+    if ren_ext == RenExt.REN:
+        return AcgExt.RENR
+
+    if ren_ext == RenExt.REN_ONCE:
+        return AcgExt.RENR_ONCE
+
+    msg = f"Unrecognised ren_ext = {ren_ext}"  # pyright: ignore[reportUnreachable]
+    raise ValueError(msg)
+
+
 def import_module_from_file(
     mod_path: Path,
     *,
@@ -118,12 +131,13 @@ def import_generate_func(gen_mod_path: Path) -> GenerateFunc:
 def get_rename_destination_path(
     ctx: Context,
     orig_path_str: str,
+    ren_ext: RenExt,
     *,
     delete_renamer: bool,
 ) -> str:
-    dest_path_str = orig_path_str[: -len(AcgExt.REN)]
+    dest_path_str = orig_path_str[: -len(ren_ext)]
 
-    renamer_path = Path(f"{dest_path_str}{AcgExt.RENR}")
+    renamer_path = Path(f"{dest_path_str}{get_renr_from_ren_ext(ren_ext)}")
     if renamer_path.is_file():
         renamer_mod = import_module_from_file(renamer_path)
         reaname = cast("Callable[[Context], str]", renamer_mod.rename)
@@ -346,6 +360,7 @@ def process_renames(ctx: Context, ren_ext: RenExt) -> None:
         dest_path_str = get_rename_destination_path(
             ctx,
             orig_path_str,
+            ren_ext,
             delete_renamer=True,
         )
 
