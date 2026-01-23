@@ -28,10 +28,7 @@ class ProjectConfigWorkspace(BaseModelNoExtra):
     members: list[Path] = []
 
 
-class ProjectConfigTemplate(BaseModelNoExtra):
-    # "ProjectConfigAutocodegen.project_name": if not in config
-    project_name: str
-
+class ProjectConfigTemplateBootstrap(BaseModelNoExtra):
     # "target_dir": project_root if not in config
     # otherwise target_dir path is relative to project_root
     target_dir: Path = Path()
@@ -43,6 +40,15 @@ class ProjectConfigTemplate(BaseModelNoExtra):
     # Defend dirs and files located in target_dir from changes
     # during templates expansions
     self_defence: bool = True
+
+
+class ProjectConfigTemplate(BaseModelNoExtra):
+    # "ProjectConfigAutocodegen.project_name": if not in config
+    project_name: str
+
+    bootstrap: ProjectConfigTemplateBootstrap = (
+        ProjectConfigTemplateBootstrap()
+    )
 
 
 type TemplateName = str
@@ -83,7 +89,7 @@ class ProjectConfig(BaseModelNoExtra):
             data_processed["templates"] = {}
 
         templates_from_dirs = {
-            item.name: {"target_dir": "."}
+            item.name: {"bootstrap": {"target_dir": "."}}
             for item in sorted(acg_dir.iterdir())
             if item.is_dir() and item.name not in data_processed["templates"]
         }

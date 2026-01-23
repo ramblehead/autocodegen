@@ -288,7 +288,7 @@ def is_project_self_defence(
             )
 
             if is_file_in_directory(target_path, template_path):
-                return template_config.self_defence
+                return template_config.bootstrap.self_defence
 
         return True
 
@@ -396,7 +396,8 @@ def generate(
     bootstrap_path = template_path / "bootstrap"
 
     target_root = (
-        project_config.autocodegen.project_root / template_config.target_dir
+        project_config.autocodegen.project_root
+        / template_config.bootstrap.target_dir
     )
 
     print(bootstrap_path)
@@ -429,7 +430,7 @@ def generate(
                 print(f"Preventing acg templates override {dst_path!s}")
                 result.add(name)
 
-            elif not template_config.init:
+            elif not template_config.bootstrap.init:
                 if name.endswith((AcgExt.REN_ONCE, AcgExt.RENR_ONCE)):
                     print(
                         (
@@ -463,7 +464,7 @@ def generate(
 
         expand_mako_all(ctx)
 
-        if template_config.init:
+        if template_config.bootstrap.init:
             expand_gen_all(ctx, GenExt.GEN_ONCE)
             process_renames(ctx, RenExt.REN_ONCE)
 
