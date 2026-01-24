@@ -390,6 +390,8 @@ def generate(
     template_config: ProjectConfigTemplate,
     project_config: ProjectConfig,
     workspace_configs: list[ProjectConfig],
+    *,
+    init: bool,
 ) -> None:
     templates_root = project_config.autocodegen.templates_root
     template_path = templates_root / template_name
@@ -430,7 +432,7 @@ def generate(
                 print(f"Preventing acg templates override {dst_path!s}")
                 result.add(name)
 
-            elif not template_config.bootstrap.init:
+            elif not init:
                 if name.endswith((AcgExt.REN_ONCE, AcgExt.RENR_ONCE)):
                     print(
                         (
@@ -464,7 +466,7 @@ def generate(
 
         expand_mako_all(ctx)
 
-        if template_config.bootstrap.init:
+        if init:
             expand_gen_all(ctx, GenExt.GEN_ONCE)
             process_renames(ctx, RenExt.REN_ONCE)
 

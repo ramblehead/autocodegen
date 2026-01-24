@@ -32,7 +32,7 @@ class AcgDirectoryNotFoundError(RuntimeError):
     """Raised when a required 'acg' directory is missing."""
 
 
-def find_acg_project_root(start_path: Path | None = None) -> Path | None:
+def find_top_project_root(start_path: Path | None = None) -> Path | None:
     """Find the topmost directory containing a subdirectory named 'acg'.
 
     Traverses upward from the starting path (default: current working directory)
@@ -146,11 +146,48 @@ def load_acg_config(
         return {}
 
 
+def is_project_root_empty_or_only_has_templates(
+    project_root: Path,
+    templates_root: Path,
+) -> bool:
+    """Check if project_root is either empty or contains only templates_root.
+
+    Returns True if project_root contains:
+      - no entries at all, or
+      - exactly one entry and that entry is templates_root
+        (compared by resolved path)
+
+    Hidden files, regular files, subdirectories — all are considered.
+    Exceptions (permission denied, not a directory, etc.) are not caught.
+
+    Args:
+        project_root: Path to the project root directory.
+        templates_root: Path to the templates root directory.
+
+    Returns:
+        True if empty or contains exactly one item matching templates_root.
+        False otherwise.
+
+    """
+    # Will raise FileNotFoundError / NotADirectoryError / PermissionError etc.
+    children = list(project_root.iterdir())
+
+    match len(children):
+        case 0:
+            return True
+        case 1:
+            item = children[0].resolve(strict=True)
+            templates = templates_root.resolve(strict=True)
+            return item == templates
+        case _:
+            return False
+
+
 def main() -> int:
     """Run main function."""
-    acg_project_root = find_acg_project_root()
+    top_project_root = find_top_project_root()
 
-    if acg_project_root is None:
+    if top_project_root is None:
         print(
             (
                 "fatal: not a autocodegen repository "
@@ -160,16 +197,27 @@ def main() -> int:
         )
         return 1
 
-    project_acg_dir = acg_project_root / "acg"
-    project_config = ProjectConfig.load(
-        load_acg_config(project_acg_dir / "config.toml"),
-        acg_dir=project_acg_dir,
+    top_templates_root = top_project_root / "acg"
+    top_project_config = ProjectConfig.load(
+        load_acg_config(top_templates_root / "config.toml"),
+        templates_root=top_templates_root,
+    )
+
+    is_top_project_root_empty = is_project_root_empty_or_only_has_templates(
+        top_project_root,
+        top_templates_root,
+    )
+
+    top_workspace_init = (
+        top_project_config.workspace.init
+        if top_project_config.workspace
+        else False
     )
 
     try:
         acg_dirs = find_workspace_acg_dirs(
-            acg_project_root,
-            project_config.workspace,
+            top_project_root,
+            top_project_config.workspace,
         )
 
     except AcgDirectoryNotFoundError as exc:
@@ -188,8 +236,8 @@ def main() -> int:
     workspace_project_configs = [
         ProjectConfig.load(
             load_acg_config(acg_dir / "config.toml"),
-            acg_dir=acg_dir,
-            project_name_default=project_config.autocodegen.project_name,
+            templates_root=acg_dir,
+            project_name_default=top_project_config.autocodegen.project_name,
         )
         for acg_dir in acg_dirs[1:]
     ]
@@ -206,10 +254,10 @@ def main() -> int:
             )
             return 1
 
-    workspace_configs = [project_config]
+    workspace_configs = [top_project_config]
     workspace_configs.extend(workspace_project_configs)
 
-    for project_config in workspace_configs:
+    for top_project_config in workspace_configs:
         # print(
         #     "***",
         #     json.dumps(
@@ -219,8 +267,22 @@ def main() -> int:
         #     ),
         # )
 
-        for [name, config] in project_config.templates.items():
-            generate(name, config, project_config, workspace_configs)
+        for [name, config] in top_project_config.templates.items():
+            init = (
+                is_top_project_root_empty
+                or top_workspace_init
+                or config.bootstrap.init
+            )
+
+            print(f"*** init = {init}")
+
+            generate(
+                name,
+                config,
+                top_project_config,
+                workspace_configs,
+                init=init,
+            )
 
     return 0
 

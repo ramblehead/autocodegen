@@ -25,6 +25,10 @@ class ProjectConfigAutocodegen(BaseModelNoExtra):
 
 
 class ProjectConfigWorkspace(BaseModelNoExtra):
+    # Workspace-level init
+    init: bool = False
+
+    # Workspace member projects
     members: list[Path] = []
 
 
@@ -35,7 +39,7 @@ class ProjectConfigTemplateBootstrap(BaseModelNoExtra):
 
     # init is True causes .gen1.py and .ren1 to expand
     # Project-level init overrides corresponding templates-level init
-    init: bool = True
+    init: bool = False
 
     # Defend dirs and files located in target_dir from changes
     # during templates expansions
@@ -64,7 +68,7 @@ class ProjectConfig(BaseModelNoExtra):
         cls,
         data: dict[str, Any],  # pyright: ignore[reportExplicitAny]
         *,
-        acg_dir: Path,
+        templates_root: Path,
         project_name_default: str | None = None,
     ) -> Self:
         data_processed = copy.deepcopy(data)
@@ -73,8 +77,8 @@ class ProjectConfig(BaseModelNoExtra):
             data_processed.pop("autocodegen", {})
         )  # fmt: skip
 
-        autocodegen["templates_root"] = acg_dir
-        autocodegen["project_root"] = acg_dir.parent
+        autocodegen["templates_root"] = templates_root
+        autocodegen["project_root"] = templates_root.parent
 
         if "project_name" not in autocodegen:
             autocodegen["project_name"] = (
@@ -90,7 +94,7 @@ class ProjectConfig(BaseModelNoExtra):
 
         templates_from_dirs = {
             item.name: {"bootstrap": {"target_dir": "."}}
-            for item in sorted(acg_dir.iterdir())
+            for item in sorted(templates_root.iterdir())
             if item.is_dir() and item.name not in data_processed["templates"]
         }
 
