@@ -274,8 +274,6 @@ def main() -> int:
                 or config.bootstrap.init
             )
 
-            print(f"*** init = {init}")
-
             generate(
                 name,
                 config,
