@@ -365,7 +365,7 @@ def process_renames(ctx: Context, ren_ext: RenExt) -> None:
         )
 
         if not orig_path.is_dir():
-            print(f"  {orig_path} -> {dest_path_str}")
+            print(f"  {dest_path_str}")
             _ = shutil.move(orig_path, dest_path_str)
             # shutil.copy2(orig_path, dest_path_str)
             # orig_path.unlink()
@@ -374,7 +374,7 @@ def process_renames(ctx: Context, ren_ext: RenExt) -> None:
 
     # Then move directories
     for orig_dir_path_str, dest_dir_path_str in dirs_to_move:
-        print(f"  {orig_dir_path_str}/ -> {dest_dir_path_str}/")
+        print(f"  {dest_dir_path_str}/")
         _ = shutil.copytree(
             orig_dir_path_str,
             dest_dir_path_str,
@@ -434,22 +434,11 @@ def generate(
 
             elif not init:
                 if name.endswith((AcgExt.REN_ONCE, AcgExt.RENR_ONCE)):
-                    print(
-                        (
-                            f"Preventing '{AcgExt.REN_ONCE}' or "
-                            f"'{AcgExt.RENR_ONCE}' "
-                            f"re-init: {src_path!s}"
-                        ),
-                    )
+                    print(f"Preventing re-init: {src_path!s}")
                     result.add(name)
 
                 if not src_path.is_dir() and name.endswith(AcgExt.GEN_ONCE):
-                    print(
-                        (
-                            f"Preventing '{AcgExt.GEN_ONCE}' "
-                            f"re-init: {src_path!s}"
-                        ),
-                    )
+                    print(f"Preventing re-init: {src_path!s}")
                     result.add(name)
 
         return result

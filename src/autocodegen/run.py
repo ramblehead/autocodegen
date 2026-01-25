@@ -146,41 +146,47 @@ def load_acg_config(
         return {}
 
 
-def is_project_root_empty_or_only_has_templates(
+def is_project_target_empty(
     project_root: Path,
     templates_root: Path,
+    members: list[Path],
 ) -> bool:
-    """Check if project_root is either empty or contains only templates_root.
+    """Check if project_root is empty or contains only allowed items.
 
-    Returns True if project_root contains:
-      - no entries at all, or
-      - exactly one entry and that entry is templates_root
-        (compared by resolved path)
+    Returns True if:
+      - project_root has no entries at all, or
+      - every entry in project_root (files, dirs, hidden included)
+        resolves to the same absolute path as either:
+          - templates_root, or
+          - one of the paths in members
 
-    Hidden files, regular files, subdirectories — all are considered.
-    Exceptions (permission denied, not a directory, etc.) are not caught.
+    Comparison uses resolved absolute paths (strict=True → raises if any path
+    does not exist). All exceptions from iterdir() / resolve() propagate.
 
     Args:
-        project_root: Path to the project root directory.
-        templates_root: Path to the templates root directory.
+        project_root:   Directory to check
+        templates_root: One of the allowed paths
+        members:        Additional allowed paths
 
     Returns:
-        True if empty or contains exactly one item matching templates_root.
-        False otherwise.
+        True if empty or contains exclusively items from the allowed set.
+        False if any entry is not in the allowed set.
 
     """
-    # Will raise FileNotFoundError / NotADirectoryError / PermissionError etc.
-    children = list(project_root.iterdir())
+    entries = list(project_root.iterdir())
 
-    match len(children):
-        case 0:
-            return True
-        case 1:
-            item = children[0].resolve(strict=True)
-            templates = templates_root.resolve(strict=True)
-            return item == templates
-        case _:
+    if not entries:
+        return True
+
+    allowed: set[Path] = {templates_root.resolve(strict=True)}
+    allowed.update(m.resolve(strict=True) for m in members)
+
+    for entry in entries:
+        resolved = entry.resolve(strict=True)
+        if resolved not in allowed:
             return False
+
+    return True
 
 
 def main() -> int:
@@ -201,11 +207,6 @@ def main() -> int:
     top_project_config = ProjectConfig.load(
         load_acg_config(top_templates_root / "config.toml"),
         templates_root=top_templates_root,
-    )
-
-    is_top_project_root_empty = is_project_root_empty_or_only_has_templates(
-        top_project_root,
-        top_templates_root,
     )
 
     top_workspace_init = (
@@ -257,7 +258,16 @@ def main() -> int:
     workspace_configs = [top_project_config]
     workspace_configs.extend(workspace_project_configs)
 
-    for top_project_config in workspace_configs:
+    is_all_project_roots_empty = all(
+        is_project_target_empty(
+            config.autocodegen.project_root,
+            config.autocodegen.templates_root,
+            config.workspace.members if config.workspace else [],
+        )
+        for config in workspace_configs
+    )
+
+    for project_config in workspace_configs:
         # print(
         #     "***",
         #     json.dumps(
@@ -267,9 +277,9 @@ def main() -> int:
         #     ),
         # )
 
-        for [name, config] in top_project_config.templates.items():
+        for [name, config] in project_config.templates.items():
             init = (
-                is_top_project_root_empty
+                is_all_project_roots_empty
                 or top_workspace_init
                 or config.bootstrap.init
             )
@@ -277,7 +287,7 @@ def main() -> int:
             generate(
                 name,
                 config,
-                top_project_config,
+                project_config,
                 workspace_configs,
                 init=init,
             )

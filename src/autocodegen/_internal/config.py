@@ -77,7 +77,38 @@ class ProjectConfig(BaseModelNoExtra):
             data_processed.pop("autocodegen", {})
         )  # fmt: skip
 
+        autocodegen_templates_root = cast(
+            "str | None",
+            autocodegen.get("templates_root"),
+        )
+
+        if autocodegen_templates_root:
+            msg = (
+                f"acg config field "
+                f'autocodegen.templates_root = "{autocodegen_templates_root}" '
+                "is ignored, using "
+                f"{templates_root} instead"
+            )
+
+            print(msg)
+
         autocodegen["templates_root"] = templates_root
+
+        autocodegen_project_root = cast(
+            "str | None",
+            autocodegen.get("project_root"),
+        )
+
+        if autocodegen_project_root:
+            msg = (
+                f"acg config field "
+                f'autocodegen.root.parent = "{autocodegen_project_root}" '
+                "is ignored, using top acg project"
+                f"instead: {templates_root.parent}"
+            )
+
+            print(msg)
+
         autocodegen["project_root"] = templates_root.parent
 
         if "project_name" not in autocodegen:
