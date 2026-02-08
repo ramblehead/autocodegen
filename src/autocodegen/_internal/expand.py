@@ -21,8 +21,6 @@ if TYPE_CHECKING:
 
     from .config import ProjectConfig, ProjectConfigTemplate
 
-TEMPLATE_MAKO_EXT = ".mako"
-
 
 class AcgExt(StrEnum):
     GEN = ".gen.py"  # Renewable generator
@@ -212,31 +210,6 @@ def expand_mako(
             )
     except OSError as cause:
         print(f"Error writing to file: {cause}")
-
-
-def expand_mako_all(ctx: Context) -> None:
-    in_template_files = get_paths_by_ext(
-        target_root=ctx.target_root,
-        ext=TEMPLATE_MAKO_EXT,
-        with_dirs=False,
-        templates_root=ctx.project_config.autocodegen.templates_root,
-    )
-
-    if in_template_files:
-        print("Expanding from mako templates:")
-
-    for in_template_file in in_template_files:
-        out_file_path_str = str(in_template_file)
-        out_file_path_str = out_file_path_str.removesuffix(TEMPLATE_MAKO_EXT)
-
-        out_file_path = Path(out_file_path_str)
-
-        print(f"  {out_file_path}")
-        expand_mako(in_template_file, out_file_path, ctx=ctx)
-        shutil.copystat(in_template_file, out_file_path)
-
-    for in_template_file in in_template_files:
-        in_template_file.unlink()
 
 
 def expand_gen(
@@ -452,8 +425,6 @@ def generate(
             ignore_dangling_symlinks=True,
             ignore=_template_files_to_ignore,
         )
-
-        expand_mako_all(ctx)
 
         if init:
             expand_gen_all(ctx, GenExt.GEN_ONCE)
